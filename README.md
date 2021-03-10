@@ -1,0 +1,1 @@
+# ort_image_classification_android
