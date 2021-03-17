@@ -1,24 +1,22 @@
 package ai.onnxruntime.example.imageclassifier
 
+import ai.onnxruntime.OrtEnvironment
+import ai.onnxruntime.OrtLoggingLevel
 import ai.onnxruntime.OrtSession
+import ai.onnxruntime.OrtSession.SessionOptions
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtLoggingLevel
-import ai.onnxruntime.OrtSession.SessionOptions
-import androidx.camera.core.*
 
 class MainActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
@@ -37,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         // Request Camera permission
-        if( allPermissionsGranted()){
+        if (allPermissionsGranted()) {
             startCamera()
         } else {
             ActivityCompat.requestPermissions(
@@ -45,7 +43,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startCamera(){
+    private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener(Runnable {
@@ -97,8 +95,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        if( requestCode == REQUEST_CODE_PERMISSIONS) {
-            if( allPermissionsGranted()){
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            if (allPermissionsGranted()) {
                 startCamera()
             } else {
                 Toast.makeText(this,
@@ -112,25 +110,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUI(result: Result) {
         runOnUiThread {
-            percentMeter.progress = (result.detectedScore[0]*100).toInt()
+            percentMeter.progress = (result.detectedScore[0] * 100).toInt()
             detected_item_1.text = labelData[result.detectedIndices[0]]
-            detected_item_value_1.text = "%.2f%%".format(result.detectedScore[0]*100)
+            detected_item_value_1.text = "%.2f%%".format(result.detectedScore[0] * 100)
 
-            if( result.detectedIndices.size > 1 ){
+            if (result.detectedIndices.size > 1) {
                 detected_item_2.text = labelData[result.detectedIndices[1]]
-                detected_item_value_2.text = "%.2f%%".format(result.detectedScore[1]*100)
+                detected_item_value_2.text = "%.2f%%".format(result.detectedScore[1] * 100)
             }
 
-            if( result.detectedIndices.size > 2 ){
+            if (result.detectedIndices.size > 2) {
                 detected_item_3.text = labelData[result.detectedIndices[2]]
-                detected_item_value_3.text = "%.2f%%".format(result.detectedScore[2]*100)
+                detected_item_value_3.text = "%.2f%%".format(result.detectedScore[2] * 100)
             }
 
             inference_time_value.text = result.processTimeMs.toString() + "ms"
         }
     }
 
-    private fun readModel() : ByteArray {
+    private fun readModel(): ByteArray {
         return resources.openRawResource(R.raw.mobilenet_v1_float).readBytes();
     }
 
@@ -142,10 +140,10 @@ class MainActivity : AppCompatActivity() {
         val env = OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL)
         ortSessionOptions = SessionOptions()
 
-        try{
+        try {
             ortSessionOptions!!.addNnapi()
             return env.createSession(modelData, ortSessionOptions)
-        } catch(exc: Exception) {
+        } catch (exc: Exception) {
             Log.e(TAG, "Create ORT session failed", exc)
         }
 

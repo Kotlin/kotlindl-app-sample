@@ -3,7 +3,6 @@ package ai.onnxruntime.example.imageclassifier
 import android.graphics.*
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
 const val IMAGE_MEAN: Float = 127.5f;
@@ -14,7 +13,7 @@ const val IMAGE_SIZE_X = 224;
 const val IMAGE_SIZE_Y = 224;
 
 
-fun Preprocess(bitmap: Bitmap) : FloatBuffer {
+fun preprocess(bitmap: Bitmap): FloatBuffer {
     val imgData = FloatBuffer.allocate(
             DIM_BATCH_SIZE
                     * IMAGE_SIZE_X
@@ -26,10 +25,8 @@ fun Preprocess(bitmap: Bitmap) : FloatBuffer {
     bitmap.getPixels(bmpData, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
 
     var idx: Int = 0
-    for(i in 0..IMAGE_SIZE_X-1)
-    {
-        for(j in 0..IMAGE_SIZE_Y-1)
-        {
+    for (i in 0..IMAGE_SIZE_X - 1) {
+        for (j in 0..IMAGE_SIZE_Y - 1) {
             val pixelValue = bmpData[idx++]
             imgData.put(((pixelValue shr 16 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
             imgData.put(((pixelValue shr 8 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)

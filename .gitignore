@@ -84,7 +84,6 @@ lint/outputs/
 lint/tmp/
 # lint/reports/
 
-app/src/main/res/raw/
 .idea/
 .DS_Store
 *.onnx
