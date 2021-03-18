@@ -19,16 +19,13 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
-    private var imageCapture: ImageCapture? = null
-
-    private var imageAnalysis: ImageAnalysis? = null
-
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
-
-    private var enableNNAPI: Boolean = false
-
     private val modelData: ByteArray by lazy { readModel() }
     private val labelData: List<String> by lazy { readLabels() }
+
+    private var imageCapture: ImageCapture? = null
+    private var imageAnalysis: ImageAnalysis? = null
+    private var enableNNAPI: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,14 +65,12 @@ class MainActivity : AppCompatActivity() {
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            val imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_BLOCK_PRODUCER)
+            imageAnalysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
                     .also {
                         it.setAnalyzer(backgroundExecutor, ORTAnalyzer(CreateOrtSession(), ::updateUI))
                     }
-
-            this.imageAnalysis = imageAnalysis
 
             try {
                 cameraProvider.unbindAll()
@@ -112,6 +107,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUI(result: Result) {
+        if (result.detectedScore.isEmpty())
+            return
+
         runOnUiThread {
             percentMeter.progress = (result.detectedScore[0] * 100).toInt()
             detected_item_1.text = labelData[result.detectedIndices[0]]
@@ -145,8 +143,9 @@ class MainActivity : AppCompatActivity() {
 
         try {
             ortSessionOptions.setIntraOpNumThreads(2)
+
             if (enableNNAPI) {
-                ortSessionOptions!!.addNnapi()
+                ortSessionOptions.addNnapi()
             }
 
             return env.createSession(modelData, ortSessionOptions)
@@ -161,7 +160,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
-        public const val TAG = "CameraXBasic"
+        public const val TAG = "ORTImageClassifier"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }

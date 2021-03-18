@@ -102,6 +102,7 @@ internal class ORTAnalyzer(
         image.close()
     }
 
+    // We can switch analyzer in the app, need to make sure the native resources are freed
     protected fun finalize() {
         ortSession?.close()
     }

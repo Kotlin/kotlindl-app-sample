@@ -1,5 +1,7 @@
 An Android image classification app using [Onnx Runtime Mobile](https://github.com/microsoft/onnxruntime) and [MobileNet V1](https://1drv.ms/u/s!Auaxv_56eyubgQOFsABIxjFVo93t?e=6fAkBx)
 
+This example is loosely based on [Google CodeLabs - Getting Started with CameraX](https://codelabs.developers.google.com/codelabs/camerax-getting-started)
+
 # Build Instructions
 ## Requirements
 - Android SDK 29+

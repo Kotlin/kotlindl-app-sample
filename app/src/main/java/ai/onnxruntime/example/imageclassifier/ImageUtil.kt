@@ -12,7 +12,7 @@ const val DIM_PIXEL_SIZE = 3;
 const val IMAGE_SIZE_X = 224;
 const val IMAGE_SIZE_Y = 224;
 
-
+// Preprocess for MobileNet V1
 fun preprocess(bitmap: Bitmap): FloatBuffer {
     val imgData = FloatBuffer.allocate(
             DIM_BATCH_SIZE
