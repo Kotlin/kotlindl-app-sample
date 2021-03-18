@@ -25,8 +25,7 @@ class MainActivity : AppCompatActivity() {
 
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
 
-    private var ortSession: OrtSession? = null
-    private var ortSessionOptions: OrtSession.SessionOptions? = null
+    private var enableNNAPI: Boolean = false
 
     private val modelData: ByteArray by lazy { readModel() }
     private val labelData: List<String> by lazy { readLabels() }
@@ -40,6 +39,12 @@ class MainActivity : AppCompatActivity() {
         } else {
             ActivityCompat.requestPermissions(
                     this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+        }
+
+        enable_nnapi_toggle.setOnCheckedChangeListener { _, isChecked ->
+            enableNNAPI = isChecked
+            imageAnalysis?.clearAnalyzer()
+            imageAnalysis?.setAnalyzer(backgroundExecutor, ORTAnalyzer(CreateOrtSession(), ::updateUI))
         }
     }
 
@@ -90,8 +95,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         backgroundExecutor.shutdown()
-        ortSessionOptions?.close()
-        ortSession?.close()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -138,13 +141,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun CreateOrtSession(): OrtSession? {
         val env = OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL)
-        ortSessionOptions = SessionOptions()
+        var ortSessionOptions = SessionOptions()
 
         try {
-            ortSessionOptions!!.addNnapi()
+            ortSessionOptions.setIntraOpNumThreads(2)
+            if (enableNNAPI) {
+                ortSessionOptions!!.addNnapi()
+            }
+
             return env.createSession(modelData, ortSessionOptions)
         } catch (exc: Exception) {
             Log.e(TAG, "Create ORT session failed", exc)
+        } finally {
+            env.close()
+            ortSessionOptions.close()
         }
 
         return null

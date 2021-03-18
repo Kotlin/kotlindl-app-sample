@@ -101,4 +101,8 @@ internal class ORTAnalyzer(
 
         image.close()
     }
+
+    protected fun finalize() {
+        ortSession?.close()
+    }
 }
