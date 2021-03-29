@@ -20,12 +20,12 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
-    private val modelData: ByteArray by lazy { readModel() }
     private val labelData: List<String> by lazy { readLabels() }
 
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
     private var enableNNAPI: Boolean = false
+    private var ortEnv: OrtEnvironment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +46,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startCamera() {
+        // Initialize ortEnv
+        ortEnv = OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL)
+
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener(Runnable {
@@ -90,6 +93,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         backgroundExecutor.shutdown()
+        ortEnv?.close()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -138,25 +142,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun CreateOrtSession(): OrtSession? {
-        val env = OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL)
-        var ortSessionOptions = SessionOptions()
+        val so = SessionOptions()
+        so.use {
+            // Set to use 2 intraOp threads for CPU EP
+            so.setIntraOpNumThreads(2)
 
-        try {
-            ortSessionOptions.setIntraOpNumThreads(2)
+            if (enableNNAPI)
+                so.addNnapi()
 
-            if (enableNNAPI) {
-                ortSessionOptions.addNnapi()
-            }
-
-            return env.createSession(modelData, ortSessionOptions)
-        } catch (exc: Exception) {
-            Log.e(TAG, "Create ORT session failed", exc)
-        } finally {
-            env.close()
-            ortSessionOptions.close()
+            return ortEnv?.createSession(readModel(), so)
         }
-
-        return null
     }
 
     companion object {

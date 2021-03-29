@@ -20,7 +20,7 @@ internal data class Result(
 
 internal class ORTAnalyzer(
         private val ortSession: OrtSession?,
-        private val callBack: (Result) -> Unit
+        private val uiUpdateCallBack: (Result) -> Unit
 ) : ImageAnalysis.Analyzer {
 
     // Get index of top 3 values
@@ -80,23 +80,30 @@ internal class ORTAnalyzer(
             val inputName = ortSession?.inputNames?.iterator()?.next()
             var result = Result()
             val shape = longArrayOf(1, 224, 224, 3)
-            val tensor = OnnxTensor.createTensor(OrtEnvironment.getEnvironment(), imgData, shape)
-            val startTime = SystemClock.uptimeMillis()
-            try {
-                val output = ortSession?.run(Collections.singletonMap(inputName, tensor))
-                result.processTimeMs = SystemClock.uptimeMillis() - startTime
-                @Suppress("UNCHECKED_CAST")
-                val labelVals = ((output?.get(0)?.value) as Array<FloatArray>)[0]
-                result.detectedIndices = argMax(labelVals)
-                for (idx in result.detectedIndices) {
-                    result.detectedScore.add(labelVals[idx])
+            val ortEnv = OrtEnvironment.getEnvironment()
+            ortEnv.use {
+                // Create input tensor
+                val input_tensor = OnnxTensor.createTensor(ortEnv, imgData, shape)
+                val startTime = SystemClock.uptimeMillis()
+                input_tensor.use {
+                    // Run the inference and get the output tensor
+                    val output = ortSession?.run(Collections.singletonMap(inputName, input_tensor))
+                    output.use {
+                        // Populate the result
+                        result.processTimeMs = SystemClock.uptimeMillis() - startTime
+                        @Suppress("UNCHECKED_CAST")
+                        val labelVals = ((output?.get(0)?.value) as Array<FloatArray>)[0]
+                        result.detectedIndices = argMax(labelVals)
+                        for (idx in result.detectedIndices) {
+                            result.detectedScore.add(labelVals[idx])
+                        }
+                        output.close()
+                    }
                 }
-                output.close()
-            } finally {
-                tensor.close()
             }
 
-            callBack(result)
+            // Update the UI
+            uiUpdateCallBack(result)
         }
 
         image.close()
