@@ -13,6 +13,31 @@
         app:scaleType="fitStart"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:textAllCaps="true"
+        android:textAppearance="@style/TextAppearance.AppCompat.Display1"
+        android:text="" />
+
+    <View
+        android:id="@+id/box_prediction"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:visibility="gone"
+        android:background="@drawable/shape_rectangle"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -25,6 +50,7 @@
             android:layout_height="wrap_content"
             android:src="@drawable/logo_36" />
     </androidx.appcompat.widget.Toolbar>
+
 
     <LinearLayout
         android:id="@+id/mylinear"

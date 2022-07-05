@@ -3,6 +3,7 @@ package ai.onnxruntime.example.imageclassifier
 import android.graphics.*
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 
 const val IMAGE_MEAN: Float = 127.5f;
@@ -28,14 +29,142 @@ fun preprocess(bitmap: Bitmap): FloatBuffer {
     for (i in 0..IMAGE_SIZE_X - 1) {
         for (j in 0..IMAGE_SIZE_Y - 1) {
             val pixelValue = bmpData[idx++]
-            imgData.put(((pixelValue shr 16 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
+                imgData.put(((pixelValue shr 16 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
             imgData.put(((pixelValue shr 8 and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
             imgData.put(((pixelValue and 0xFF) - IMAGE_MEAN) / IMAGE_STD)
         }
     }
 
     imgData.rewind()
+    return imgData;
+}
+
+fun preprocessSSD2(bitmap: Bitmap): ByteBuffer {
+    val IMAGE_SIZE_SSD = 300
+    val imgData = ByteBuffer.allocate(
+        DIM_BATCH_SIZE
+                * IMAGE_SIZE_SSD
+                * IMAGE_SIZE_SSD
+                * DIM_PIXEL_SIZE)
+    imgData.rewind()
+
+    val bmpData = IntArray(IMAGE_SIZE_SSD * IMAGE_SIZE_SSD)
+    bitmap.getPixels(bmpData, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+    var idx: Int = 0
+    for (i in 0..IMAGE_SIZE_SSD - 1) {
+        for (j in 0..IMAGE_SIZE_SSD - 1) {
+            val pixelValue = bmpData[idx++]
+            imgData.put(floatToByteArray(((pixelValue shr 16 and 0xFF) - IMAGE_MEAN) / IMAGE_STD * 255)[0])
+            imgData.put(floatToByteArray(((pixelValue shr 8 and 0xFF) - IMAGE_MEAN) / IMAGE_STD * 255)[0])
+            imgData.put(floatToByteArray(((pixelValue and 0xFF) - IMAGE_MEAN) / IMAGE_STD * 255)[0])
+        }
+    }
+
+    imgData.rewind()
+    return imgData;
+}
+
+//fun preProcess(bitmap: Bitmap): FloatBuffer {
+//    val IMAGE_SIZE_SSD = 300
+//
+//    val imgData = FloatBuffer.allocate(
+//        DIM_BATCH_SIZE
+//                * DIM_PIXEL_SIZE
+//                * IMAGE_SIZE_SSD
+//                * IMAGE_SIZE_SSD
+//    )
+//    imgData.rewind()
+//    val stride = IMAGE_SIZE_SSD * IMAGE_SIZE_SSD
+//    val bmpData = IntArray(stride)
+//    bitmap.getPixels(bmpData, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+//    for (i in 0..IMAGE_SIZE_SSD - 1) {
+//        for (j in 0..IMAGE_SIZE_SSD - 1) {
+//            val idx = IMAGE_SIZE_SSD * i + j
+//            val pixelValue = bmpData[idx]
+//            imgData.put(idx, (((pixelValue shr 16 and 0xFF) / 255f - 0.485f) / 0.229f))
+//            imgData.put(idx + stride, (((pixelValue shr 8 and 0xFF) / 255f - 0.456f) / 0.224f))
+//            imgData.put(idx + stride * 2, (((pixelValue and 0xFF) / 255f - 0.406f) / 0.225f))
+//        }
+//    }
+//
+//    imgData.rewind()
+//    return imgData
+//}
+
+fun preProcess(bitmap: Bitmap): FloatBuffer {
+    val IMAGE_SIZE_SSD = 1000
+
+    val imgData = FloatBuffer.allocate(
+        DIM_BATCH_SIZE
+                * DIM_PIXEL_SIZE
+                * IMAGE_SIZE_SSD
+                * IMAGE_SIZE_SSD
+    )
+    imgData.rewind()
+    val stride = IMAGE_SIZE_SSD * IMAGE_SIZE_SSD
+    val bmpData = IntArray(stride)
+    bitmap.getPixels(bmpData, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+    var idx: Int = 0
+    for (i in 0..IMAGE_SIZE_SSD - 1) {
+        for (j in 0..IMAGE_SIZE_SSD - 1) {
+            val pixelValue = bmpData[idx++]
+            imgData.put((pixelValue shr 16 and 0xFF).toFloat())
+            imgData.put((pixelValue shr 8 and 0xFF).toFloat())
+            imgData.put((pixelValue and 0xFF).toFloat())
+        }
+    }
+//    for (i in 0..IMAGE_SIZE_SSD - 1) {
+//        for (j in 0..IMAGE_SIZE_SSD - 1) {
+//            val idx = IMAGE_SIZE_SSD * i + j
+//            val pixelValue = bmpData[idx]
+//            imgData.put(idx, (pixelValue shr 16 and 0xFF).toFloat())
+//            imgData.put(idx + stride, ((pixelValue shr 8 and 0xFF)).toFloat())
+//            imgData.put(idx + stride * 2, (pixelValue and 0xFF).toFloat())
+//        }
+//    }
+
+    imgData.rewind()
     return imgData
+}
+
+fun floatToByteArray(value: Float): ByteArray {
+    val intBits = java.lang.Float.floatToIntBits(value)
+    return byteArrayOf(
+        (intBits shr 24).toByte(),
+        (intBits shr 16).toByte(),
+        (intBits shr 8).toByte(),
+        intBits.toByte()
+    )
+}
+
+// Preprocess for MobileNet V1
+fun preprocessSSD(bitmap: Bitmap):ByteBuffer  {
+    val IMAGE_SIZE_SSD = 300
+    val imgData = ByteBuffer.allocate(
+        DIM_BATCH_SIZE
+                * IMAGE_SIZE_SSD
+                * IMAGE_SIZE_SSD
+                * DIM_PIXEL_SIZE)
+    imgData.rewind()
+
+    val bmpData = IntArray(IMAGE_SIZE_SSD * IMAGE_SIZE_SSD)
+    bitmap.getPixels(bmpData, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+
+    var idx: Int = 0
+    for (i in 0..IMAGE_SIZE_SSD - 1) {
+        for (j in 0..IMAGE_SIZE_SSD - 1) {
+            val pixelValue = bmpData[idx++]
+            imgData.put(((pixelValue shr 16 and 0xFF) * 255).toByte())
+            imgData.put(((pixelValue shr 8 and 0xFF) * 255).toByte())
+            imgData.put(((pixelValue and 0xFF) * 255).toByte())
+        }
+    }
+
+//    bitmap.copyPixelsToBuffer(imgData);
+
+    imgData.rewind()
+    return imgData;
 }
 
 fun ImageProxy.toBitmap(): Bitmap? {
@@ -60,7 +189,7 @@ private fun yuv420888ToNv21(image: ImageProxy): ByteArray {
     return outputBuffer
 }
 
-private fun imageToByteBuffer(image: ImageProxy, outputBuffer: ByteArray, pixelCount: Int) {
+public fun imageToByteBuffer(image: ImageProxy, outputBuffer: ByteArray, pixelCount: Int) {
     assert(image.format == ImageFormat.YUV_420_888)
 
     val imageCrop = image.cropRect
