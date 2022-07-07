@@ -29,7 +29,6 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
-    private val labelData: List<String> by lazy { readLabels() }
 
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
@@ -54,27 +53,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    @Throws(IOException::class)
-    fun getFileFromAssets(context: Context, fileName: String): File = File(context.cacheDir, fileName)
-        .also {
-            if (!it.exists()) {
-                it.outputStream().use { cache ->
-                    context.assets.open(fileName).use { inputStream ->
-                        inputStream.copyTo(cache)
-                    }
-                }
-            }
-        }
-
     private fun startCamera() {
         // Initialize ortEnv8
         ortEnv = OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL)
-
-//        val bitmap = BitmapFactory.decodeResource(resources, R.raw.imggg)
-//
-//        val ort = ORTAnalyzer(CreateOrtSession(), ::updateUI)
-//
-//        ort.govnanalyze(bitmap)
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
@@ -138,24 +119,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUI(result: Result) {
-//        if (result.detectedScore.isEmpty())
-//            return
+        if (result.label == -1)
+            return
 
         runOnUiThread {
             box_prediction.visibility = View.GONE
-//            percentMeter.progress = (result.detectedScore[0] * 100).toInt()
-//            detected_item_1.text = labelData[result.detectedIndices[0]]
-//            detected_item_value_1.text = "%.2f%%".format(result.detectedScore[0] * 100)
-//
-//            if (result.detectedIndices.size > 1) {
-//                detected_item_2.text = labelData[result.detectedIndices[1]]
-//                detected_item_value_2.text = "%.2f%%".format(result.detectedScore[1] * 100)
-//            }
-//
-//            if (result.detectedIndices.size > 2) {
-//                detected_item_3.text = labelData[result.detectedIndices[2]]
-//                detected_item_value_3.text = "%.2f%%".format(result.detectedScore[2] * 100)
-//            }
+
+            percentMeter.progress = (result.score * 100).toInt()
+            detected_item_1.text = cocoCategories[result.label]
+            detected_item_value_1.text = "%.2f%%".format(result.score * 100)
+
             val rect = mapOutputCoordinates(result)
 
             (box_prediction.layoutParams as ViewGroup.MarginLayoutParams).apply {
@@ -180,9 +153,7 @@ class MainActivity : AppCompatActivity() {
             result.xmax * viewFinder.width,
             result.ymax * viewFinder.height - 350
         )
-//        val correctedLocation = previewLocation
-//        return previewLocation
-//
+
         // Step 2: compensate for camera sensor orientation and mirroring
         val isFrontFacing = false
         val correctedLocation = if (isFrontFacing) {
@@ -245,6 +216,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         public const val TAG = "ORTImageClassifier"
         private const val REQUEST_CODE_PERMISSIONS = 10
-        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }
