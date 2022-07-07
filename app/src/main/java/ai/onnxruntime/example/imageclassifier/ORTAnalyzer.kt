@@ -12,9 +12,9 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import java.util.*
 
-private const val OUTPUT_BOXES = "detection_boxes:0"
-private const val OUTPUT_LABELS = "detection_classes:0"
-private const val OUTPUT_SCORES = "detection_scores:0"
+private const val OUTPUT_BOXES = "TFLite_Detection_PostProcess"
+private const val OUTPUT_LABELS = "TFLite_Detection_PostProcess:1"
+private const val OUTPUT_SCORES = "TFLite_Detection_PostProcess:2"
 
 internal data class Result(
     var label: Int = -1,
@@ -56,23 +56,27 @@ internal class ORTAnalyzer(
                 input_tensor.use {
                     // Run the inference and get the output tensor
                     val output = ortSession?.run(Collections.singletonMap(inputName, input_tensor))
-                    output.use {
-                        // Populate the result
-                        result.processTimeMs = SystemClock.uptimeMillis() - startTime
-                        @Suppress("UNCHECKED_CAST")
-                        val boxes = (output!![OUTPUT_BOXES].get().value as Array<Array<FloatArray>>)[0]
-                        @Suppress("UNCHECKED_CAST")
-                        val probabilities = (output[OUTPUT_SCORES].get().value as Array<FloatArray>)[0]
-                        @Suppress("UNCHECKED_CAST")
-                        val labels = (output[OUTPUT_LABELS].get().value as Array<FloatArray>)[0]
+                    if (output!![OUTPUT_BOXES].isPresent) {
+                        output.use {
+                            // Populate the result
+                            result.processTimeMs = SystemClock.uptimeMillis() - startTime
+                            @Suppress("UNCHECKED_CAST")
+                            val boxes = (output!![OUTPUT_BOXES].get().value as Array<Array<FloatArray>>)[0]
+                            @Suppress("UNCHECKED_CAST")
+                            val probabilities = (output[OUTPUT_SCORES].get().value as Array<FloatArray>)[0]
+                            @Suppress("UNCHECKED_CAST")
+                            val labels = (output[OUTPUT_LABELS].get().value as Array<FloatArray>)[0]
 
-                        result.ymin = boxes[0][0]
-                        result.xmin = boxes[0][1]
-                        result.ymax = boxes[0][2]
-                        result.xmax = boxes[0][3]
+                            result.ymin = boxes[0][0]
+                            result.xmin = boxes[0][1]
+                            result.ymax = boxes[0][2]
+                            result.xmax = boxes[0][3]
 
-                        result.label = labels[0].toInt()
-                        result.score = probabilities[0]
+                            result.label = labels[0].toInt()
+                            result.score = probabilities[0]
+                            output.close()
+                        }
+                    } else {
                         output.close()
                     }
                 }

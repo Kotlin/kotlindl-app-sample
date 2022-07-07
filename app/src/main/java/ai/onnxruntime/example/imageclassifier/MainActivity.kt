@@ -193,7 +193,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun readSsd(): ByteArray {
-        return resources.openRawResource(R.raw.modified3).readBytes();
+        return resources.openRawResource(R.raw.ssd_onnx_300_with_runtime_opt).readBytes();
     }
 
     private fun readLabels(): List<String> {

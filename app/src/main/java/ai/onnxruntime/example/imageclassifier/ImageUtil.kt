@@ -10,8 +10,8 @@ const val IMAGE_MEAN: Float = 127.5f;
 const val IMAGE_STD: Float = 127.5f;
 const val DIM_BATCH_SIZE = 1;
 const val DIM_PIXEL_SIZE = 3;
-const val IMAGE_SIZE_X = 1000;
-const val IMAGE_SIZE_Y = 1000;
+const val IMAGE_SIZE_X = 300;
+const val IMAGE_SIZE_Y = 300;
 
 fun preprocess(bitmap: Bitmap): FloatBuffer {
     val imgData = FloatBuffer.allocate(
