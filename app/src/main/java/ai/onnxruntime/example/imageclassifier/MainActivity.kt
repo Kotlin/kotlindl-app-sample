@@ -1,13 +1,7 @@
 package ai.onnxruntime.example.imageclassifier
 
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtLoggingLevel
-import ai.onnxruntime.OrtSession
-import ai.onnxruntime.OrtSession.SessionOptions
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
@@ -20,8 +14,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.File
-import java.io.IOException
+import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
+import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDMobileNetObjectDetectionModel
 import java.lang.Integer.min
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -32,8 +26,6 @@ class MainActivity : AppCompatActivity() {
 
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
-    private var enableNNAPI: Boolean = false
-    private var ortEnv: OrtEnvironment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,18 +37,9 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.requestPermissions(
                     this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
-
-        enable_nnapi_toggle.setOnCheckedChangeListener { _, isChecked ->
-            enableNNAPI = isChecked
-            imageAnalysis?.clearAnalyzer()
-            imageAnalysis?.setAnalyzer(backgroundExecutor, ORTAnalyzer(CreateOrtSession(), ::updateUI))
-        }
     }
 
     private fun startCamera() {
-        // Initialize ortEnv8
-        ortEnv = OrtEnvironment.getEnvironment(OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL)
-
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
         cameraProviderFuture.addListener(Runnable {
@@ -76,12 +59,15 @@ class MainActivity : AppCompatActivity() {
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
+
+            val model = SSDMobileNetObjectDetectionModel(readModelBytes())
             imageAnalysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                    .build()
-                    .also {
-                        it.setAnalyzer(backgroundExecutor, ORTAnalyzer(CreateOrtSession(), ::updateUI))
-                    }
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also {
+                    it.setAnalyzer(backgroundExecutor, KotlinDlAnalyzer(model, ::updateUI))
+                }
+
 
             try {
                 cameraProvider.unbindAll()
@@ -101,7 +87,6 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         backgroundExecutor.shutdown()
-        ortEnv?.close()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -118,16 +103,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateUI(result: Result) {
-        if (result.label == -1)
+    private fun updateUI(result: Result?) {
+        if (result == null)
+            return
+
+        if (result.detection.probability < 0.5f)
             return
 
         runOnUiThread {
             box_prediction.visibility = View.GONE
 
-            percentMeter.progress = (result.score * 100).toInt()
-            detected_item_1.text = cocoCategories[result.label]
-            detected_item_value_1.text = "%.2f%%".format(result.score * 100)
+            percentMeter.progress = (result.detection.probability * 100).toInt()
+            detected_item_1.text = result.detection.classLabel
+            detected_item_value_1.text = "%.2f%%".format(result.detection.probability * 100)
 
             val rect = mapOutputCoordinates(result)
 
@@ -145,13 +133,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun mapOutputCoordinates(result: Result): RectF {
-
         // Step 1: map location to the preview coordinates
         val previewLocation = RectF(
-            result.xmin * viewFinder.width,
-            result.ymin * viewFinder.height - 350,
-            result.xmax * viewFinder.width,
-            result.ymax * viewFinder.height - 350
+            result.detection.xMin * viewFinder.width,
+            result.detection.yMin * viewFinder.height - 350,
+            result.detection.xMax * viewFinder.width,
+            result.detection.yMax * viewFinder.height - 350
         )
 
         // Step 2: compensate for camera sensor orientation and mirroring
@@ -188,34 +175,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun readModel(): ByteArray {
-        return resources.openRawResource(R.raw.mobilenet_v1_float).readBytes();
-    }
-
-    private fun readSsd(): ByteArray {
+    private fun readModelBytes(): ByteArray {
         return resources.openRawResource(R.raw.ssd_onnx_300_with_runtime_opt).readBytes();
     }
 
-    private fun readLabels(): List<String> {
-        return resources.openRawResource(R.raw.labels).bufferedReader().readLines()
-    }
-
-    private fun CreateOrtSession(): OrtSession? {
-        val so = SessionOptions()
-        so.use {
-            // Set to use 2 intraOp threads for CPU EP
-            so.setIntraOpNumThreads(2)
-
-            if (enableNNAPI)
-                so.addNnapi()
-
-            return ortEnv?.createSession(readSsd(), so)
-        }
-    }
-
     companion object {
-        public const val TAG = "ORTImageClassifier"
+        const val TAG = "ORTImageClassifier"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }
+
+
+internal data class Result(
+    var processTimeMs: Long = 0,
+    var detection: DetectedObject
+)
