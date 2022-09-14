@@ -166,6 +166,13 @@
                 android:textSize="16sp" />
         </LinearLayout>
 
+        <Spinner
+            android:id="@+id/models"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:drawable/btn_dropdown"
+            android:spinnerMode="dropdown"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -5,8 +5,12 @@ import android.content.pm.PackageManager
 import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.AdapterView.OnItemSelectedListener
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -15,21 +19,38 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
+import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
+import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxModels
 import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDMobileNetObjectDetectionModel
 import java.lang.Integer.min
+import java.lang.reflect.Field
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
 
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
 
+    private var modelNames = arrayOf("SSDMobilenetV1", "EfficientNet-Lite4", "MobilenetV1")
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val modelsSpinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modelNames)
+        modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+
+        with (models) {
+            adapter = modelsSpinnerAdapter
+            setSelection(0, false)
+            onItemSelectedListener = this@MainActivity
+            prompt = "Select model"
+            gravity = Gravity.CENTER
+
+        }
         // Request Camera permission
         if (allPermissionsGranted()) {
             startCamera()
@@ -59,15 +80,13 @@ class MainActivity : AppCompatActivity() {
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-
             val model = SSDMobileNetObjectDetectionModel(readModelBytes())
             imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(backgroundExecutor, KotlinDlAnalyzer(model, ::updateUI))
+                    it.setAnalyzer(backgroundExecutor, DetectionPipeline(model, ::updateUI))
                 }
-
 
             try {
                 cameraProvider.unbindAll()
@@ -107,38 +126,55 @@ class MainActivity : AppCompatActivity() {
         if (result == null)
             return
 
-        if (result.detection.probability < 0.5f)
+        if (result.confidence < 0.5f)
             return
 
         runOnUiThread {
-            box_prediction.visibility = View.GONE
-
-            percentMeter.progress = (result.detection.probability * 100).toInt()
-            detected_item_1.text = result.detection.classLabel
-            detected_item_value_1.text = "%.2f%%".format(result.detection.probability * 100)
-
-            val rect = mapOutputCoordinates(result)
-
-            (box_prediction.layoutParams as ViewGroup.MarginLayoutParams).apply {
-                topMargin = rect.top.toInt()
-                leftMargin = rect.left.toInt()
-                width = min(viewFinder.width, rect.right.toInt() - rect.left.toInt())
-                height = min(viewFinder.height, rect.bottom.toInt() - rect.top.toInt())
+            clearUi()
+            when (result) {
+                is DetectionResult -> visualizeDetection(result.detection)
+                is ClassificationResult -> visualizeClassification(result.prediction to result.confidence)
             }
-
-            box_prediction.visibility = View.VISIBLE
-
             inference_time_value.text = result.processTimeMs.toString() + "ms"
         }
     }
 
-    private fun mapOutputCoordinates(result: Result): RectF {
+    private fun clearUi() {
+        box_prediction.visibility = View.GONE
+    }
+
+    private fun visualizeDetection(detection: DetectedObject) {
+        percentMeter.progress = (detection.probability * 100).toInt()
+        detected_item_1.text = detection.classLabel
+        detected_item_value_1.text = "%.2f%%".format(detection.probability * 100)
+
+        val rect = mapOutputCoordinates(detection)
+
+        (box_prediction.layoutParams as ViewGroup.MarginLayoutParams).apply {
+            topMargin = rect.top.toInt()
+            leftMargin = rect.left.toInt()
+            width = min(viewFinder.width, rect.right.toInt() - rect.left.toInt())
+            height = min(viewFinder.height, rect.bottom.toInt() - rect.top.toInt())
+        }
+
+        box_prediction.visibility = View.VISIBLE
+    }
+
+    private fun visualizeClassification(prediction: Pair<String, Float>) {
+        val (label, confidence) = prediction
+
+        percentMeter.progress = (confidence * 100).toInt()
+        detected_item_1.text = label
+        detected_item_value_1.text = "%.2f%%".format(confidence * 100)
+    }
+
+    private fun mapOutputCoordinates(detection: DetectedObject): RectF {
         // Step 1: map location to the preview coordinates
         val previewLocation = RectF(
-            result.detection.xMin * viewFinder.width,
-            result.detection.yMin * viewFinder.height - 350,
-            result.detection.xMax * viewFinder.width,
-            result.detection.yMax * viewFinder.height - 350
+            detection.xMin * viewFinder.width,
+            detection.yMin * viewFinder.height - 350,
+            detection.xMax * viewFinder.width,
+            detection.yMax * viewFinder.height - 350
         )
 
         // Step 2: compensate for camera sensor orientation and mirroring
@@ -184,10 +220,46 @@ class MainActivity : AppCompatActivity() {
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
+
+    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        imageAnalysis?.clearAnalyzer()
+        when (modelNames[position]) {
+            "SSDMobilenetV1" -> {
+                val model = SSDMobileNetObjectDetectionModel(readModelBytes())
+                imageAnalysis?.setAnalyzer(backgroundExecutor, DetectionPipeline(model, ::updateUI))
+            }
+            "EfficientNet-Lite4" -> {
+                val hub = ONNXModelHub(applicationContext)
+                val model = OnnxModels.CV.EfficientNet4Lite().pretrainedModel(hub)
+                imageAnalysis?.setAnalyzer(backgroundExecutor, ClassificationPipeline(model, ::updateUI))
+            }
+            "MobilenetV1" -> {
+                val hub = ONNXModelHub(applicationContext)
+                val model = OnnxModels.CV.MobilenetV1().pretrainedModel(hub)
+                imageAnalysis?.setAnalyzer(backgroundExecutor, ClassificationPipeline(model, ::updateUI))
+            }
+        }
+    }
+
+    override fun onNothingSelected(parent: AdapterView<*>?) {
+        TODO("Not yet implemented")
+    }
 }
 
+internal interface Result {
+    var processTimeMs: Long
+    val confidence: Float
+}
 
-internal data class Result(
-    var processTimeMs: Long = 0,
-    var detection: DetectedObject
-)
+internal data class DetectionResult(
+    override var processTimeMs: Long,
+    override val confidence: Float,
+    val detection: DetectedObject
+) : Result
+
+
+internal data class ClassificationResult(
+    override var processTimeMs: Long,
+    override val confidence: Float,
+    val prediction: String
+) : Result
