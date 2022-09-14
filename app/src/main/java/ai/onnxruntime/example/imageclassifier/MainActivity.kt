@@ -20,10 +20,10 @@ import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
+import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxModels
 import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDMobileNetObjectDetectionModel
 import java.lang.Integer.min
-import java.lang.reflect.Field
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
 
-    private var modelNames = arrayOf("SSDMobilenetV1", "EfficientNet-Lite4", "MobilenetV1")
+    private var modelNames = arrayOf("SSDMobilenetV1", "EfficientNet-Lite4", "MobilenetV1", "Shufflenet")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -237,6 +237,11 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
                 val hub = ONNXModelHub(applicationContext)
                 val model = OnnxModels.CV.MobilenetV1().pretrainedModel(hub)
                 imageAnalysis?.setAnalyzer(backgroundExecutor, ClassificationPipeline(model, ::updateUI))
+            }
+            "Shufflenet" -> {
+                val modelBytes = resources.openRawResource(R.raw.shufflenet).readBytes()
+                val model = OnnxInferenceModel(modelBytes)
+                imageAnalysis?.setAnalyzer(backgroundExecutor, ShufflenetPipeline(model, ::updateUI))
             }
         }
     }
