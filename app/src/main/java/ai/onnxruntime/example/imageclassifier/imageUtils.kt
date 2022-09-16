@@ -1,12 +1,8 @@
 package ai.onnxruntime.example.imageclassifier
 
 import android.graphics.*
-import android.renderscript.Allocation
-import android.renderscript.RenderScript
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-import java.nio.FloatBuffer
 
 fun ImageProxy.toBitmap(): Bitmap? {
     val nv21 = yuv420888ToNv21(this)
@@ -144,3 +140,4 @@ fun imageToByteBuffer(image: ImageProxy, outputBuffer: ByteArray, pixelCount: In
         }
     }
 }
+

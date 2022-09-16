@@ -21,8 +21,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
-import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxModels
-import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDMobileNetObjectDetectionModel
+import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
 import java.lang.Integer.min
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -34,7 +33,13 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
 
-    private var modelNames = arrayOf("SSDMobilenetV1", "EfficientNet-Lite4", "MobilenetV1", "Shufflenet")
+    private var modelNames = arrayOf(
+        "SSDMobilenetV1",
+        "EfficientNet-Lite4",
+        "MobilenetV1",
+        "Shufflenet",
+        "EfficientDetLite0"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -80,7 +85,8 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            val model = SSDMobileNetObjectDetectionModel(readModelBytes())
+            val hub = ONNXModelHub(applicationContext)
+            val model = ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub)
             imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
@@ -177,6 +183,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
             detection.yMax * viewFinder.height - 350
         )
 
+
         // Step 2: compensate for camera sensor orientation and mirroring
         val isFrontFacing = false
         val correctedLocation = if (isFrontFacing) {
@@ -189,7 +196,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
             previewLocation
         }
 
-//         Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
+        // Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
         val margin = 0.00f
         val requestedRatio = 4f / 3f
         val midX = (correctedLocation.left + correctedLocation.right) / 2f
@@ -211,10 +218,6 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
         }
     }
 
-    private fun readModelBytes(): ByteArray {
-        return resources.openRawResource(R.raw.ssd_onnx_300_with_runtime_opt).readBytes();
-    }
-
     companion object {
         const val TAG = "ORTImageClassifier"
         private const val REQUEST_CODE_PERMISSIONS = 10
@@ -223,27 +226,35 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         imageAnalysis?.clearAnalyzer()
-        when (modelNames[position]) {
+
+        val hub = ONNXModelHub(applicationContext)
+
+        val pipeline  = when (modelNames[position]) {
             "SSDMobilenetV1" -> {
-                val model = SSDMobileNetObjectDetectionModel(readModelBytes())
-                imageAnalysis?.setAnalyzer(backgroundExecutor, DetectionPipeline(model, ::updateUI))
+                val model = ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub)
+                DetectionPipeline(model, ::updateUI)
             }
             "EfficientNet-Lite4" -> {
-                val hub = ONNXModelHub(applicationContext)
-                val model = OnnxModels.CV.EfficientNet4Lite().pretrainedModel(hub)
-                imageAnalysis?.setAnalyzer(backgroundExecutor, ClassificationPipeline(model, ::updateUI))
+                val model = ONNXModels.CV.EfficientNet4Lite().pretrainedModel(hub)
+                ClassificationPipeline(model, ::updateUI)
             }
             "MobilenetV1" -> {
-                val hub = ONNXModelHub(applicationContext)
-                val model = OnnxModels.CV.MobilenetV1().pretrainedModel(hub)
-                imageAnalysis?.setAnalyzer(backgroundExecutor, ClassificationPipeline(model, ::updateUI))
+                val model = ONNXModels.CV.MobilenetV1().pretrainedModel(hub)
+                ClassificationPipeline(model, ::updateUI)
             }
             "Shufflenet" -> {
                 val modelBytes = resources.openRawResource(R.raw.shufflenet).readBytes()
                 val model = OnnxInferenceModel(modelBytes)
-                imageAnalysis?.setAnalyzer(backgroundExecutor, ShufflenetPipeline(model, ::updateUI))
+                ShufflenetPipeline(model, ::updateUI)
             }
+            "EfficientDetLite0" -> {
+                val model = ONNXModels.ObjectDetection.EfficientDetLite0.pretrainedModel(hub)
+                DetectionPipeline(model, ::updateUI)
+            }
+            else -> throw NotImplementedError()
         }
+
+        imageAnalysis?.setAnalyzer(backgroundExecutor, pipeline)
     }
 
     override fun onNothingSelected(parent: AdapterView<*>?) {

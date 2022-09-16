@@ -6,7 +6,6 @@ import android.os.SystemClock
 import androidx.annotation.RequiresApi
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import org.jetbrains.kotlinx.dl.api.core.util.predictTop5Labels
 import org.jetbrains.kotlinx.dl.api.extension.argmax
 import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
@@ -14,15 +13,14 @@ import org.jetbrains.kotlinx.dl.api.inference.onnx.classification.ImageRecogniti
 import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionProvider.CPU
 import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionProvider.NNAPI
 import org.jetbrains.kotlinx.dl.api.inference.onnx.inferUsing
-import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDMobileNetObjectDetectionModel
+import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDLikeModel
 import org.jetbrains.kotlinx.dl.dataset.Imagenet
 import org.jetbrains.kotlinx.dl.dataset.preprocessing.*
 import org.jetbrains.kotlinx.dl.dataset.shape.TensorShape
 import kotlin.math.exp
-import kotlin.math.log
 
 internal class DetectionPipeline (
-    private val model: SSDMobileNetObjectDetectionModel,
+    private val model: SSDLikeModel,
     private val uiUpdateCallBack: (Result) -> Unit
 ) : ImageAnalysis.Analyzer {
 
@@ -30,7 +28,7 @@ internal class DetectionPipeline (
     override fun analyze(image: ImageProxy) {
         val imgBitmap = image.toBitmap()
 
-        model.setTargetRotation(image.imageInfo.rotationDegrees.toFloat())
+        model.targetRotation = image.imageInfo.rotationDegrees.toFloat()
 
         val start = SystemClock.uptimeMillis()
         val detections = model.inferUsing(CPU()) {
@@ -63,7 +61,7 @@ internal class ClassificationPipeline (
     override fun analyze(image: ImageProxy) {
         val imgBitmap = image.toBitmap()
 
-        model.setTargetRotation(image.imageInfo.rotationDegrees.toFloat())
+        model.targetRotation = image.imageInfo.rotationDegrees.toFloat()
 
         val start = SystemClock.uptimeMillis()
         val predictions = model.inferUsing(NNAPI()) {
