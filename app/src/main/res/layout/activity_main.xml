@@ -6,12 +6,21 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/viewFinder"
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:scaleType="fitStart"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:layout_height="match_parent">
+
+        <androidx.camera.view.PreviewView
+            android:id="@+id/viewFinder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <ai.onnxruntime.example.imageclassifier.DetectorView
+            android:id="@+id/detector_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <ImageView
         android:layout_width="match_parent"
@@ -28,15 +37,6 @@
         android:textAllCaps="true"
         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
         android:text="" />
-
-    <View
-        android:id="@+id/box_prediction"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:visibility="gone"
-        android:background="@drawable/shape_rectangle"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
@@ -58,7 +58,7 @@
         android:layout_height="wrap_content"
         app:layout_constraintBottom_toBottomOf="parent"
         android:orientation="vertical"
-        android:background="@color/white"
+        android:background="#70FFFFFF"
         android:paddingTop="10dp"
         android:paddingLeft="10dp"
         android:paddingRight="10dp"
@@ -82,66 +82,12 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/detected_item_1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/black"
-                android:text="Detected Item 1"
-                android:textSize="16sp" />
-
-            <TextView
                 android:id="@+id/detected_item_value_1"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="right"
+                android:gravity="center"
                 android:textColor="@android:color/black"
                 android:textSize="16sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/detected_item_2"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/darker_gray"
-                android:text="Detected Item 2"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/detected_item_value_2"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="right"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal">
-
-            <TextView
-                android:id="@+id/detected_item_3"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/darker_gray"
-                android:text="Detected Item 3"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/detected_item_value_3"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="right"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <LinearLayout

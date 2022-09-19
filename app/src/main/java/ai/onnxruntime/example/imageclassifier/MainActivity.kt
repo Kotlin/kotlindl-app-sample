@@ -154,89 +154,20 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     private fun updateUI(result: Result?) {
         runOnUiThread {
             clearUi()
-            if (result == null || result.confidence < 0.5f) return@runOnUiThread
-
-            when (result) {
-                is DetectionResult -> visualizeDetection(result.detection)
-                is ClassificationResult -> visualizeClassification(result.prediction to result.confidence)
+            if (result == null || result.confidence < 0.5f) {
+                detector_view.detection = null
+                return@runOnUiThread
             }
+            detector_view.detection = result
+            percentMeter.progress = (result.confidence * 100).toInt()
+            detected_item_value_1.text = result.text
             inference_time_value.text = result.processTimeMs.toString() + "ms"
         }
     }
 
     private fun clearUi() {
-        box_prediction.visibility = View.GONE
+        detected_item_value_1.text = ""
         inference_time_value.text = ""
-    }
-
-    private fun visualizeDetection(detection: DetectedObject) {
-        percentMeter.progress = (detection.probability * 100).toInt()
-        detected_item_1.text = detection.classLabel
-        detected_item_value_1.text = "%.2f%%".format(detection.probability * 100)
-
-        val rect = mapOutputCoordinates(detection)
-
-        (box_prediction.layoutParams as ViewGroup.MarginLayoutParams).apply {
-            topMargin = rect.top.toInt()
-            leftMargin = rect.left.toInt()
-            width = min(viewFinder.width, rect.right.toInt() - rect.left.toInt())
-            height = min(viewFinder.height, rect.bottom.toInt() - rect.top.toInt())
-        }
-
-        box_prediction.visibility = View.VISIBLE
-    }
-
-    private fun visualizeClassification(prediction: Pair<String, Float>) {
-        val (label, confidence) = prediction
-
-        percentMeter.progress = (confidence * 100).toInt()
-        detected_item_1.text = label
-        detected_item_value_1.text = "%.2f%%".format(confidence * 100)
-    }
-
-    private fun mapOutputCoordinates(detection: DetectedObject): RectF {
-        // Step 1: map location to the preview coordinates
-        val previewLocation = RectF(
-            detection.xMin * viewFinder.width,
-            detection.yMin * viewFinder.height - 350,
-            detection.xMax * viewFinder.width,
-            detection.yMax * viewFinder.height - 350
-        )
-
-
-        // Step 2: compensate for camera sensor orientation and mirroring
-        val isFrontFacing = false
-        val correctedLocation = if (isFrontFacing) {
-            RectF(
-                viewFinder.width - previewLocation.right,
-                previewLocation.top,
-                viewFinder.width - previewLocation.left,
-                previewLocation.bottom
-            )
-        } else {
-            previewLocation
-        }
-
-        // Step 3: compensate for 1:1 to 4:3 aspect ratio conversion + small margin
-        val margin = 0.00f
-        val requestedRatio = 4f / 3f
-        val midX = (correctedLocation.left + correctedLocation.right) / 2f
-        val midY = (correctedLocation.top + correctedLocation.bottom) / 2f
-        return if (viewFinder.width < viewFinder.height) {
-            RectF(
-                midX - (1f + margin) * requestedRatio * correctedLocation.width() / 2f,
-                midY - (1f - margin) * correctedLocation.height() / 2f,
-                midX + (1f + margin) * requestedRatio * correctedLocation.width() / 2f,
-                midY + (1f - margin) * correctedLocation.height() / 2f
-            )
-        } else {
-            RectF(
-                midX - (1f - margin) * correctedLocation.width() / 2f,
-                midY - (1f + margin) * requestedRatio * correctedLocation.height() / 2f,
-                midX + (1f - margin) * correctedLocation.width() / 2f,
-                midY + (1f + margin) * requestedRatio * correctedLocation.height() / 2f
-            )
-        }
     }
 
     companion object {
@@ -253,21 +184,3 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         TODO("Not yet implemented")
     }
 }
-
-interface Result {
-    var processTimeMs: Long
-    val confidence: Float
-}
-
-internal data class DetectionResult(
-    override var processTimeMs: Long,
-    override val confidence: Float,
-    val detection: DetectedObject
-) : Result
-
-
-internal data class ClassificationResult(
-    override var processTimeMs: Long,
-    override val confidence: Float,
-    val prediction: String
-) : Result

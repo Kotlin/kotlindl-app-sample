@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="object_stroke_width">3dp</dimen>
+    <dimen name="label_font_size">24sp</dimen>
+</resources>

@@ -11,6 +11,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.jetbrains.kotlinx.dl.api.extension.argmax
 import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
+import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
@@ -31,6 +32,7 @@ internal class PipelineAnalyzer(
 ) : ImageAnalysis.Analyzer {
     private val hub = ONNXModelHub(context)
     private val pipelines = Pipelines.values().map { it.createPipeline(hub, resources) }
+
     @Volatile
     private var currentPipeline: Pipeline? = null
 
@@ -108,7 +110,7 @@ internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
         if (detections.isEmpty()) return null
 
         val detection = detections.single()
-        return DetectionResult(end - start, detection.probability, detection)
+        return DetectionResult(end - start, detection)
     }
 
     override fun close() {
@@ -192,4 +194,3 @@ internal class ShufflenetPipeline(
         }
     }
 }
-
