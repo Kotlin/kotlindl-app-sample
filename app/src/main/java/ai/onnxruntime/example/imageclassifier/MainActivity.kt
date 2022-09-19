@@ -1,6 +1,7 @@
 package ai.onnxruntime.example.imageclassifier
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.RectF
 import android.os.Bundle
@@ -55,6 +56,11 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
             prompt = "Select model"
             gravity = Gravity.CENTER
 
+        }
+
+        pose_button.setOnClickListener {
+            val intent = Intent(this, PoseDetectionActivity::class.java)
+            startActivity(intent)
         }
         // Request Camera permission
         if (allPermissionsGranted()) {

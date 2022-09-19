@@ -173,6 +173,12 @@
             android:background="@android:drawable/btn_dropdown"
             android:spinnerMode="dropdown"/>
 
+        <Button
+            android:id="@+id/pose_button"
+            android:text="Pose detection"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
