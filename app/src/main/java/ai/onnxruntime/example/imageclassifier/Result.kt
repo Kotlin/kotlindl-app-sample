@@ -1,6 +1,7 @@
 package ai.onnxruntime.example.imageclassifier
 
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
+import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 
 interface Result {
     var processTimeMs: Long
@@ -22,4 +23,12 @@ internal data class ClassificationResult(
     val prediction: String
 ) : Result {
     override val text get() = prediction
+}
+
+internal data class PoseDetectionResult(
+    override var processTimeMs: Long,
+    val detection: DetectedPose
+) : Result {
+    override val text get() = "human pose"
+    override val confidence get() = 1f
 }

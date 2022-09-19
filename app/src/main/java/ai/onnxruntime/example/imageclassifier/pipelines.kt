@@ -11,7 +11,6 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.jetbrains.kotlinx.dl.api.extension.argmax
 import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
-import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
@@ -20,6 +19,7 @@ import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionP
 import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionProvider.NNAPI
 import org.jetbrains.kotlinx.dl.api.inference.onnx.inferUsing
 import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDLikeModel
+import org.jetbrains.kotlinx.dl.api.inference.onnx.posedetection.SinglePoseDetectionModel
 import org.jetbrains.kotlinx.dl.dataset.Imagenet
 import org.jetbrains.kotlinx.dl.dataset.preprocessing.*
 import org.jetbrains.kotlinx.dl.dataset.shape.TensorShape
@@ -91,6 +91,11 @@ enum class Pipelines {
     EfficientDetLite0 {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
             return DetectionPipeline(ONNXModels.ObjectDetection.EfficientDetLite0.pretrainedModel(hub))
+        }
+    },
+    MoveNetSinglePoseLighting {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+            return PoseDetectionPipeline(ONNXModels.PoseDetection.MoveNetSinglePoseLighting.pretrainedModel(hub))
         }
     };
 
@@ -193,4 +198,22 @@ internal class ShufflenetPipeline(
             return logits
         }
     }
+}
+
+class PoseDetectionPipeline(private val model: SinglePoseDetectionModel): Pipeline {
+    override fun analyze(image: Bitmap, rotation: Float): Result? {
+        model.targetRotation = rotation
+
+        val start = SystemClock.uptimeMillis()
+        val detectedPose = model.inferUsing(CPU()) {
+            it.detectPose(image)
+        }
+        val end = SystemClock.uptimeMillis()
+
+        if (detectedPose.poseLandmarks.isEmpty()) return null
+
+        return PoseDetectionResult(end - start, detectedPose)
+    }
+
+    override fun close() = model.close()
 }

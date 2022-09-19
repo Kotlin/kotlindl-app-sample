@@ -20,10 +20,17 @@ class DetectorView(context: Context, attrs: AttributeSet) :
         textSize = resources.getDimensionPixelSize(R.dimen.label_font_size).toFloat()
         color = resources.getColor(R.color.white)
     }
+    private val landmarkPaint = Paint().apply {
+        color = resources.getColor(R.color.white)
+        style = Paint.Style.FILL
+        strokeWidth = resources.getDimensionPixelSize(R.dimen.object_stroke_width).toFloat()
+    }
+    private val radius = resources.getDimensionPixelSize(R.dimen.object_stroke_width).toFloat()
 
     override fun Canvas.drawDetection(detection: Result) {
         when (detection) {
             is DetectionResult -> drawObject(detection.detection, objectPaint, textPaint)
+            is PoseDetectionResult -> drawPose(detection.detection, landmarkPaint, objectPaint, radius)
         }
     }
 }

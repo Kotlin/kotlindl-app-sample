@@ -64,11 +64,6 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
             gravity = Gravity.CENTER
 
         }
-
-        pose_button.setOnClickListener {
-            val intent = Intent(this, PoseDetectionActivity::class.java)
-            startActivity(intent)
-        }
         // Request Camera permission
         if (allPermissionsGranted()) {
             startCamera()
