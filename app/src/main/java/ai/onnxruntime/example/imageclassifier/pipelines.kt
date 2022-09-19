@@ -1,13 +1,18 @@
 package ai.onnxruntime.example.imageclassifier
 
+import android.content.Context
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.SystemClock
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.jetbrains.kotlinx.dl.api.extension.argmax
 import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
+import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
+import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
 import org.jetbrains.kotlinx.dl.api.inference.onnx.classification.ImageRecognitionModel
 import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionProvider.CPU
@@ -19,94 +24,139 @@ import org.jetbrains.kotlinx.dl.dataset.preprocessing.*
 import org.jetbrains.kotlinx.dl.dataset.shape.TensorShape
 import kotlin.math.exp
 
-internal class DetectionPipeline (
-    private val model: SSDLikeModel,
-    private val uiUpdateCallBack: (Result) -> Unit
+internal class PipelineAnalyzer(
+    context: Context,
+    private val resources: Resources,
+    private val uiUpdateCallBack: (Result?) -> Unit
 ) : ImageAnalysis.Analyzer {
+    private val hub = ONNXModelHub(context)
+    private val pipelines = Pipelines.values().map { it.createPipeline(hub, resources) }
+    @Volatile
+    private var currentPipeline: Pipeline? = null
 
-    @RequiresApi(Build.VERSION_CODES.R)
+    fun setPipeline(index: Int) {
+        currentPipeline = pipelines[index]
+    }
+
+    fun clear() {
+        currentPipeline = null
+    }
+
     override fun analyze(image: ImageProxy) {
         val imgBitmap = image.toBitmap()
+        val targetRotation = image.imageInfo.rotationDegrees.toFloat()
 
-        model.targetRotation = image.imageInfo.rotationDegrees.toFloat()
+        Log.i("pipelines", "pipeline $currentPipeline")
+        uiUpdateCallBack(currentPipeline?.analyze(imgBitmap!!, targetRotation))
+
+        image.close()
+    }
+
+    fun close() {
+        clear()
+        pipelines.forEach(Pipeline::close)
+    }
+}
+
+interface Pipeline {
+    fun analyze(image: Bitmap, rotation: Float): Result?
+    fun close()
+}
+
+enum class Pipelines {
+    SSDMobilenetV1 {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+            return DetectionPipeline(ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub))
+        }
+    },
+    EfficientNetLite4 {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+            return ClassificationPipeline(ONNXModels.CV.EfficientNet4Lite().pretrainedModel(hub))
+        }
+    },
+    MobilenetV1 {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+            return ClassificationPipeline(ONNXModels.CV.MobilenetV1().pretrainedModel(hub))
+        }
+    },
+    Shufflenet {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+            return ShufflenetPipeline(
+                OnnxInferenceModel(resources.openRawResource(R.raw.shufflenet).readBytes())
+            )
+        }
+    },
+    EfficientDetLite0 {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+            return DetectionPipeline(ONNXModels.ObjectDetection.EfficientDetLite0.pretrainedModel(hub))
+        }
+    };
+
+    abstract fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline
+
+}
+
+internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
+    override fun analyze(image: Bitmap, rotation: Float): Result? {
+        model.targetRotation = rotation
 
         val start = SystemClock.uptimeMillis()
         val detections = model.inferUsing(CPU()) {
-            it.detectObjects(imgBitmap!!, 1)
+            it.detectObjects(image, 1)
         }
         val end = SystemClock.uptimeMillis()
+        if (detections.isEmpty()) return null
 
-        when {
-            detections.isNotEmpty() -> {
-                val detection = detections[0]
-                uiUpdateCallBack(DetectionResult(end - start, detection.probability, detection))
-            }
-        }
-
-        image.close()
+        val detection = detections.single()
+        return DetectionResult(end - start, detection.probability, detection)
     }
 
-    // We can switch analyzer in the app, need to make sure the native resources are freed
-    protected fun finalize() {
+    override fun close() {
         model.close()
     }
 }
 
-internal class ClassificationPipeline (
-    private val model: ImageRecognitionModel,
-    private val uiUpdateCallBack: (Result) -> Unit
-) : ImageAnalysis.Analyzer {
+internal class ClassificationPipeline(private val model: ImageRecognitionModel) : Pipeline {
 
-    @RequiresApi(Build.VERSION_CODES.R)
-    override fun analyze(image: ImageProxy) {
-        val imgBitmap = image.toBitmap()
-
-        model.targetRotation = image.imageInfo.rotationDegrees.toFloat()
+    override fun analyze(image: Bitmap, rotation: Float): Result? {
+        model.targetRotation = rotation
 
         val start = SystemClock.uptimeMillis()
         val predictions = model.inferUsing(NNAPI()) {
-            it.predictTopKObjects(imgBitmap!!, 1)
+            it.predictTopKObjects(image, 1)
         }
         val end = SystemClock.uptimeMillis()
 
-        when {
-            predictions.isNotEmpty() -> {
-                val (label, confidence) = predictions[0]
-                uiUpdateCallBack(ClassificationResult(end - start, confidence, label))
-            }
-        }
+        if (predictions.isEmpty()) return null
 
-        image.close()
+        val (label, confidence) = predictions[0]
+        return ClassificationResult(end - start, confidence, label)
     }
 
-    // We can switch analyzer in the app, need to make sure the native resources are freed
-    protected fun finalize() {
+    override fun close() {
         model.close()
     }
 }
 
-internal class ShufflenetPipeline (
-    private val model: OnnxInferenceModel,
-    private val uiUpdateCallBack: (Result) -> Unit
-) : ImageAnalysis.Analyzer {
+internal class ShufflenetPipeline(
+    private val model: OnnxInferenceModel
+) : Pipeline {
     private val labels = Imagenet.V1k.labels()
 
     @RequiresApi(Build.VERSION_CODES.R)
-    override fun analyze(image: ImageProxy) {
-        val imgBitmap = image.toBitmap()
-
+    override fun analyze(image: Bitmap, rotation: Float): Result {
         val preprocessing = pipeline<Bitmap>()
             .resize {
                 outputHeight = 224
                 outputWidth = 224
             }
-            .rotate { degrees = image.imageInfo.rotationDegrees.toFloat() }
+            .rotate { degrees = rotation }
             .toFloatArray { layout = TensorLayout.NCHW }
             .call(InputType.TORCH.preprocessing(channelsLast = false))
 
         val start = SystemClock.uptimeMillis()
         val (label, confidence) = model.inferUsing(CPU()) {
-            val (tensor, shape) = preprocessing.apply(imgBitmap!!)
+            val (tensor, shape) = preprocessing.apply(image)
             val logits = model.predictSoftly(tensor)
             val (confidence, _) = Softmax().apply(logits to shape)
             val labelId = confidence.argmax()
@@ -114,13 +164,10 @@ internal class ShufflenetPipeline (
         }
         val end = SystemClock.uptimeMillis()
 
-        uiUpdateCallBack(ClassificationResult(end - start, confidence, label))
-
-        image.close()
+        return ClassificationResult(end - start, confidence, label)
     }
 
-    // We can switch analyzer in the app, need to make sure the native resources are freed
-    protected fun finalize() {
+    override fun close() {
         model.close()
     }
 

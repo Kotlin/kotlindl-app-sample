@@ -20,39 +20,46 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
-import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
-import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
-import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
 import java.lang.Integer.min
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 
-class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
+class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
 
     private var imageCapture: ImageCapture? = null
     private var imageAnalysis: ImageAnalysis? = null
 
-    private var modelNames = arrayOf(
-        "SSDMobilenetV1",
-        "EfficientNet-Lite4",
-        "MobilenetV1",
-        "Shufflenet",
-        "EfficientDetLite0"
-    )
+    @Volatile
+    private var pipelineAnalyzer: PipelineAnalyzer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val modelsSpinnerAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, modelNames)
+        val modelsSpinnerAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            Pipelines.values().map { it.name })
         modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
 
-        with (models) {
+        with(models) {
             adapter = modelsSpinnerAdapter
-            setSelection(0, false)
-            onItemSelectedListener = this@MainActivity
+            onItemSelectedListener = object : OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    pipelineAnalyzer?.setPipeline(position)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+                    pipelineAnalyzer?.clear()
+                }
+            }
             prompt = "Select model"
             gravity = Gravity.CENTER
 
@@ -67,7 +74,8 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
             startCamera()
         } else {
             ActivityCompat.requestPermissions(
-                    this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
+            )
         }
     }
 
@@ -79,32 +87,34 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
 
             // Preview
             val preview = Preview.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                    .build()
-                    .also {
-                        it.setSurfaceProvider(viewFinder.surfaceProvider)
-                    }
+                .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                .build()
+                .also {
+                    it.setSurfaceProvider(viewFinder.surfaceProvider)
+                }
 
             imageCapture = ImageCapture.Builder()
-                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-                    .build()
+                .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                .build()
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            val hub = ONNXModelHub(applicationContext)
-            val model = ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub)
+            pipelineAnalyzer = PipelineAnalyzer(applicationContext, resources, ::updateUI)
             imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(backgroundExecutor, DetectionPipeline(model, ::updateUI))
+                    it.setAnalyzer(backgroundExecutor, pipelineAnalyzer!!)
                 }
 
             try {
                 cameraProvider.unbindAll()
-
                 cameraProvider.bindToLifecycle(
-                        this, cameraSelector, preview, imageCapture, imageAnalysis)
+                    this, cameraSelector, preview, imageCapture, imageAnalysis
+                )
+                runOnUiThread {
+                    models.setSelection(0, false)
+                }
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -117,17 +127,24 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
 
     override fun onDestroy() {
         super.onDestroy()
+        pipelineAnalyzer?.close()
         backgroundExecutor.shutdown()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
                 startCamera()
             } else {
-                Toast.makeText(this,
-                        "Permissions not granted by the user.",
-                        Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Permissions not granted by the user.",
+                    Toast.LENGTH_SHORT
+                ).show()
                 finish()
             }
 
@@ -135,14 +152,10 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
     }
 
     private fun updateUI(result: Result?) {
-        if (result == null)
-            return
-
-        if (result.confidence < 0.5f)
-            return
-
         runOnUiThread {
             clearUi()
+            if (result == null || result.confidence < 0.5f) return@runOnUiThread
+
             when (result) {
                 is DetectionResult -> visualizeDetection(result.detection)
                 is ClassificationResult -> visualizeClassification(result.prediction to result.confidence)
@@ -153,6 +166,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
 
     private fun clearUi() {
         box_prediction.visibility = View.GONE
+        inference_time_value.text = ""
     }
 
     private fun visualizeDetection(detection: DetectedObject) {
@@ -197,7 +211,8 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
                 viewFinder.width - previewLocation.right,
                 previewLocation.top,
                 viewFinder.width - previewLocation.left,
-                previewLocation.bottom)
+                previewLocation.bottom
+            )
         } else {
             previewLocation
         }
@@ -231,36 +246,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        imageAnalysis?.clearAnalyzer()
-
-        val hub = ONNXModelHub(applicationContext)
-
-        val pipeline  = when (modelNames[position]) {
-            "SSDMobilenetV1" -> {
-                val model = ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub)
-                DetectionPipeline(model, ::updateUI)
-            }
-            "EfficientNet-Lite4" -> {
-                val model = ONNXModels.CV.EfficientNet4Lite().pretrainedModel(hub)
-                ClassificationPipeline(model, ::updateUI)
-            }
-            "MobilenetV1" -> {
-                val model = ONNXModels.CV.MobilenetV1().pretrainedModel(hub)
-                ClassificationPipeline(model, ::updateUI)
-            }
-            "Shufflenet" -> {
-                val modelBytes = resources.openRawResource(R.raw.shufflenet).readBytes()
-                val model = OnnxInferenceModel(modelBytes)
-                ShufflenetPipeline(model, ::updateUI)
-            }
-            "EfficientDetLite0" -> {
-                val model = ONNXModels.ObjectDetection.EfficientDetLite0.pretrainedModel(hub)
-                DetectionPipeline(model, ::updateUI)
-            }
-            else -> throw NotImplementedError()
-        }
-
-        imageAnalysis?.setAnalyzer(backgroundExecutor, pipeline)
+        pipelineAnalyzer?.setPipeline(position)
     }
 
     override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -268,7 +254,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener  {
     }
 }
 
-internal interface Result {
+interface Result {
     var processTimeMs: Long
     val confidence: Float
 }
