@@ -150,10 +150,10 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         runOnUiThread {
             clearUi()
             if (result == null || result.confidence < 0.5f) {
-                detector_view.detection = null
+                detector_view.setDetection(null)
                 return@runOnUiThread
             }
-            detector_view.detection = result
+            detector_view.setDetection(result)
             percentMeter.progress = (result.confidence * 100).toInt()
             detected_item_value_1.text = result.text
             inference_time_value.text = result.processTimeMs.toString() + "ms"
@@ -163,6 +163,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     private fun clearUi() {
         detected_item_value_1.text = ""
         inference_time_value.text = ""
+        percentMeter.progress = 0
     }
 
     companion object {

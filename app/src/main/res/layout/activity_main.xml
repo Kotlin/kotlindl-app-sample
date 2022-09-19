@@ -6,21 +6,20 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <androidx.camera.view.PreviewView
+        android:id="@+id/viewFinder"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        app:scaleType="fillCenter"/>
 
-        <androidx.camera.view.PreviewView
-            android:id="@+id/viewFinder"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
-
-        <ai.onnxruntime.example.imageclassifier.DetectorView
-            android:id="@+id/detector_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    <ai.onnxruntime.example.imageclassifier.DetectorView
+        android:id="@+id/detector_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintBottom_toBottomOf="@id/viewFinder"
+        app:layout_constraintLeft_toLeftOf="@id/viewFinder"
+        app:layout_constraintRight_toRightOf="@id/viewFinder"
+        app:layout_constraintTop_toTopOf="@id/viewFinder" />
 
     <ImageView
         android:layout_width="match_parent"
@@ -29,21 +28,22 @@
         android:visibility="gone" />
 
     <TextView
+        android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:text=""
         android:textAllCaps="true"
         android:textAppearance="@style/TextAppearance.AppCompat.Display1"
-        android:text="" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        app:layout_constraintTop_toTopOf="parent"
-        android:background="@color/semi_transparent_white">
+        android:background="@color/semi_transparent_white"
+        app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
             android:layout_width="wrap_content"
@@ -51,29 +51,28 @@
             android:src="@drawable/logo_36" />
     </androidx.appcompat.widget.Toolbar>
 
-
     <LinearLayout
-        android:id="@+id/mylinear"
+        android:id="@+id/control"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:background="@color/semi_transparent_white"
         android:orientation="vertical"
-        android:background="#70FFFFFF"
-        android:paddingTop="10dp"
         android:paddingLeft="10dp"
+        android:paddingTop="10dp"
         android:paddingRight="10dp"
-        android:paddingBottom="10dp">
+        android:paddingBottom="10dp"
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <ProgressBar
-            android:layout_margin="16dp"
-            android:layout_width="match_parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
             android:id="@+id/percentMeter"
             style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:progress="0" />
+            android:layout_margin="16dp"
+            android:progress="0"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -99,8 +98,8 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/black"
                 android:text="Inference Time"
+                android:textColor="@android:color/black"
                 android:textSize="16sp" />
 
             <TextView
@@ -117,7 +116,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:drawable/btn_dropdown"
-            android:spinnerMode="dropdown"/>
+            android:spinnerMode="dropdown" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

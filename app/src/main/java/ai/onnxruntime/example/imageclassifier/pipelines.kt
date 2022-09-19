@@ -105,6 +105,7 @@ enum class Pipelines {
 
 internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
     override fun analyze(image: Bitmap, rotation: Float): Result? {
+        Log.i("DetectionPipeline", "image size ${image.width} x ${image.height}")
         model.targetRotation = rotation
 
         val start = SystemClock.uptimeMillis()
@@ -115,7 +116,7 @@ internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
         if (detections.isEmpty()) return null
 
         val detection = detections.single()
-        return DetectionResult(end - start, detection)
+        return DetectionResult(end - start, detection, image.height, image.width)
     }
 
     override fun close() {
@@ -137,7 +138,7 @@ internal class ClassificationPipeline(private val model: ImageRecognitionModel) 
         if (predictions.isEmpty()) return null
 
         val (label, confidence) = predictions[0]
-        return ClassificationResult(end - start, confidence, label)
+        return ClassificationResult(end - start, confidence, label, image.height, image.width)
     }
 
     override fun close() {
@@ -171,7 +172,7 @@ internal class ShufflenetPipeline(
         }
         val end = SystemClock.uptimeMillis()
 
-        return ClassificationResult(end - start, confidence, label)
+        return ClassificationResult(end - start, confidence, label, image.height, image.width)
     }
 
     override fun close() {
@@ -212,7 +213,7 @@ class PoseDetectionPipeline(private val model: SinglePoseDetectionModel): Pipeli
 
         if (detectedPose.poseLandmarks.isEmpty()) return null
 
-        return PoseDetectionResult(end - start, detectedPose)
+        return PoseDetectionResult(end - start, detectedPose, image.height, image.width)
     }
 
     override fun close() = model.close()
