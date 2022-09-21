@@ -67,7 +67,9 @@ internal class PipelineAnalyzer(
             uiUpdateCallBack(null)
         } else {
             val (prediction, confidence) = result
-            uiUpdateCallBack(Result(prediction, confidence, end - start, image.height, image.width))
+            val (width, height) = if (rotationDegrees == 0 || rotationDegrees == 180) image.width to image.height
+            else image.height to image.width
+            uiUpdateCallBack(Result(prediction, confidence, end - start, width, height))
         }
     }
 
