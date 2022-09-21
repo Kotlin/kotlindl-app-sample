@@ -72,6 +72,8 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
             )
         }
+
+        detector_view.scaleType = viewFinder.scaleType
     }
 
     private fun startCamera() {

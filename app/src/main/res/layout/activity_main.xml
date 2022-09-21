@@ -15,11 +15,7 @@
     <ai.onnxruntime.example.imageclassifier.DetectorView
         android:id="@+id/detector_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintBottom_toBottomOf="@id/viewFinder"
-        app:layout_constraintLeft_toLeftOf="@id/viewFinder"
-        app:layout_constraintRight_toRightOf="@id/viewFinder"
-        app:layout_constraintTop_toTopOf="@id/viewFinder" />
+        android:layout_height="match_parent"/>
 
     <ImageView
         android:layout_width="match_parent"
