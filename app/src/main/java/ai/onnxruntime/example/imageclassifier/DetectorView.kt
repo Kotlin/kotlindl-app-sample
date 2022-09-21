@@ -6,6 +6,8 @@ import android.graphics.Paint
 import android.text.TextPaint
 import android.util.AttributeSet
 import androidx.camera.view.PreviewView.ScaleType
+import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
+import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import org.jetbrains.kotlinx.dl.visualization.*
 
 class DetectorView(context: Context, attrs: AttributeSet) :
@@ -37,15 +39,15 @@ class DetectorView(context: Context, attrs: AttributeSet) :
 
     override fun Canvas.drawDetection(detection: Result) {
         val currentBounds = bounds ?: bounds()
-        when (detection) {
-            is DetectionResult -> drawObject(
-                detection.detection,
+        when (val prediction = detection.prediction) {
+            is DetectedObject -> drawObject(
+                prediction,
                 objectPaint, textPaint,
                 currentBounds
             )
 
-            is PoseDetectionResult -> drawPose(
-                detection.detection,
+            is DetectedPose -> drawPose(
+                prediction,
                 landmarkPaint, objectPaint, radius,
                 currentBounds
             )

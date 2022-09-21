@@ -20,6 +20,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
+import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import java.lang.Integer.min
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -157,12 +158,19 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
             }
             detector_view.setDetection(result)
             percentMeter.progress = (result.confidence * 100).toInt()
-            detected_item_value_1.text = result.text
+            val (item, value) = when (val prediction = result.prediction) {
+                is String -> prediction to "%.2f%%".format(result.confidence * 100)
+                is DetectedObject -> prediction.classLabel to "%.2f%%".format(result.confidence * 100)
+                else -> "" to ""
+            }
+            detected_item_1.text = item
+            detected_item_value_1.text = value
             inference_time_value.text = result.processTimeMs.toString() + "ms"
         }
     }
 
     private fun clearUi() {
+        detected_item_1.text = ""
         detected_item_value_1.text = ""
         inference_time_value.text = ""
         percentMeter.progress = 0

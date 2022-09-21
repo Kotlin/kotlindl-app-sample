@@ -11,6 +11,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.jetbrains.kotlinx.dl.api.extension.argmax
 import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
+import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
 import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
 import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
@@ -20,10 +21,19 @@ import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionP
 import org.jetbrains.kotlinx.dl.api.inference.onnx.inferUsing
 import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDLikeModel
 import org.jetbrains.kotlinx.dl.api.inference.onnx.posedetection.SinglePoseDetectionModel
+import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import org.jetbrains.kotlinx.dl.dataset.Imagenet
 import org.jetbrains.kotlinx.dl.dataset.preprocessing.*
 import org.jetbrains.kotlinx.dl.dataset.shape.TensorShape
 import kotlin.math.exp
+
+data class Result(
+    val prediction: Any,
+    val confidence: Float,
+    val processTimeMs: Long,
+    val width: Int,
+    val height: Int,
+)
 
 internal class PipelineAnalyzer(
     context: Context,
@@ -46,12 +56,19 @@ internal class PipelineAnalyzer(
 
     override fun analyze(image: ImageProxy) {
         val imgBitmap = image.toBitmap()
-        val targetRotation = image.imageInfo.rotationDegrees.toFloat()
-
-        Log.i("pipelines", "pipeline $currentPipeline")
-        uiUpdateCallBack(currentPipeline?.analyze(imgBitmap!!, targetRotation))
-
+        val rotationDegrees = image.imageInfo.rotationDegrees
         image.close()
+
+        val start = SystemClock.uptimeMillis()
+        val result = currentPipeline?.analyze(imgBitmap!!, rotationDegrees.toFloat())
+        val end = SystemClock.uptimeMillis()
+
+        if (result == null) {
+            uiUpdateCallBack(null)
+        } else {
+            val (prediction, confidence) = result
+            uiUpdateCallBack(Result(prediction, confidence, end - start, image.height, image.width))
+        }
     }
 
     fun close() {
@@ -61,7 +78,7 @@ internal class PipelineAnalyzer(
 }
 
 interface Pipeline {
-    fun analyze(image: Bitmap, rotation: Float): Result?
+    fun analyze(image: Bitmap, rotation: Float): Pair<Any, Float>?
     fun close()
 }
 
@@ -104,19 +121,17 @@ enum class Pipelines {
 }
 
 internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
-    override fun analyze(image: Bitmap, rotation: Float): Result? {
+    override fun analyze(image: Bitmap, rotation: Float): Pair<DetectedObject, Float>? {
         Log.i("DetectionPipeline", "image size ${image.width} x ${image.height}")
         model.targetRotation = rotation
 
-        val start = SystemClock.uptimeMillis()
         val detections = model.inferUsing(CPU()) {
             it.detectObjects(image, 1)
         }
-        val end = SystemClock.uptimeMillis()
         if (detections.isEmpty()) return null
 
         val detection = detections.single()
-        return DetectionResult(end - start, detection, image.height, image.width)
+        return detection to detection.probability
     }
 
     override fun close() {
@@ -126,19 +141,14 @@ internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
 
 internal class ClassificationPipeline(private val model: ImageRecognitionModel) : Pipeline {
 
-    override fun analyze(image: Bitmap, rotation: Float): Result? {
+    override fun analyze(image: Bitmap, rotation: Float): Pair<String, Float>? {
         model.targetRotation = rotation
 
-        val start = SystemClock.uptimeMillis()
         val predictions = model.inferUsing(NNAPI()) {
             it.predictTopKObjects(image, 1)
         }
-        val end = SystemClock.uptimeMillis()
-
         if (predictions.isEmpty()) return null
-
-        val (label, confidence) = predictions[0]
-        return ClassificationResult(end - start, confidence, label, image.height, image.width)
+        return predictions.single()
     }
 
     override fun close() {
@@ -152,7 +162,7 @@ internal class ShufflenetPipeline(
     private val labels = Imagenet.V1k.labels()
 
     @RequiresApi(Build.VERSION_CODES.R)
-    override fun analyze(image: Bitmap, rotation: Float): Result {
+    override fun analyze(image: Bitmap, rotation: Float): Pair<String, Float> {
         val preprocessing = pipeline<Bitmap>()
             .resize {
                 outputHeight = 224
@@ -162,7 +172,6 @@ internal class ShufflenetPipeline(
             .toFloatArray { layout = TensorLayout.NCHW }
             .call(InputType.TORCH.preprocessing(channelsLast = false))
 
-        val start = SystemClock.uptimeMillis()
         val (label, confidence) = model.inferUsing(CPU()) {
             val (tensor, shape) = preprocessing.apply(image)
             val logits = model.predictSoftly(tensor)
@@ -170,9 +179,8 @@ internal class ShufflenetPipeline(
             val labelId = confidence.argmax()
             labels[labelId]!! to confidence[labelId]
         }
-        val end = SystemClock.uptimeMillis()
 
-        return ClassificationResult(end - start, confidence, label, image.height, image.width)
+        return label to confidence
     }
 
     override fun close() {
@@ -201,19 +209,17 @@ internal class ShufflenetPipeline(
     }
 }
 
-class PoseDetectionPipeline(private val model: SinglePoseDetectionModel): Pipeline {
-    override fun analyze(image: Bitmap, rotation: Float): Result? {
+class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : Pipeline {
+    override fun analyze(image: Bitmap, rotation: Float): Pair<DetectedPose, Float>? {
         model.targetRotation = rotation
 
-        val start = SystemClock.uptimeMillis()
         val detectedPose = model.inferUsing(CPU()) {
             it.detectPose(image)
         }
-        val end = SystemClock.uptimeMillis()
 
         if (detectedPose.poseLandmarks.isEmpty()) return null
 
-        return PoseDetectionResult(end - start, detectedPose, image.height, image.width)
+        return detectedPose to 1f
     }
 
     override fun close() = model.close()
