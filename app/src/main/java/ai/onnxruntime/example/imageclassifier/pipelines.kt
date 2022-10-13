@@ -220,7 +220,7 @@ class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : Pipel
             it.detectPose(image)
         }
 
-        if (detectedPose.poseLandmarks.isEmpty()) return null
+        if (detectedPose.landmarks.isEmpty()) return null
 
         return detectedPose to 1f
     }

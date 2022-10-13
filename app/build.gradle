@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    compileSdkVersion 30
-    buildToolsVersion "30.0.2"
+    compileSdkVersion 33
+    buildToolsVersion "30.0.3"
 
     defaultConfig {
         applicationId "ai.onnxruntime.example.imageclassifier"
         minSdkVersion 24
-        targetSdkVersion 30
+        targetSdkVersion 33
         versionCode 1
         versionName "1.0"
 
@@ -42,13 +42,13 @@ android {
 
 dependencies {
     // CameraX core library using the camera2 implementation
-    def camerax_version = "1.0.0-rc03"
+    def camerax_version = "1.1.0"
     // The following line is optional, as the core library is included indirectly by camera-camera2
     implementation "androidx.camera:camera-camera2:${camerax_version}"
     // If you want to additionally use the CameraX Lifecycle library
     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
     // If you want to additionally use the CameraX View class
-    implementation "androidx.camera:camera-view:1.0.0-alpha22"
+    implementation "androidx.camera:camera-view:1.1.0"
 
     implementation ("org.jetbrains.kotlinx:kotlin-deeplearning-onnx:0.5.SNAPSHOT") {
         exclude group: 'com.microsoft.onnxruntime', module: 'onnxruntime'

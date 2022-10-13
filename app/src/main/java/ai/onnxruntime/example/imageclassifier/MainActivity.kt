@@ -162,7 +162,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
             percentMeter.progress = (result.confidence * 100).toInt()
             val (item, value) = when (val prediction = result.prediction) {
                 is String -> prediction to "%.2f%%".format(result.confidence * 100)
-                is DetectedObject -> prediction.classLabel to "%.2f%%".format(result.confidence * 100)
+                is DetectedObject -> prediction.label to "%.2f%%".format(result.confidence * 100)
                 else -> "" to ""
             }
             detected_item_1.text = item
