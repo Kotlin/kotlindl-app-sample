@@ -1,4 +1,4 @@
-package ai.onnxruntime.example.imageclassifier
+package org.jetbrains.kotlinx.dl.example.app
 
 import android.content.Context
 import android.graphics.Canvas

@@ -1,29 +1,22 @@
-package ai.onnxruntime.example.imageclassifier
+package org.jetbrains.kotlinx.dl.example.app
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.RectF
 import android.os.Bundle
 import android.util.Log
-import android.util.Size
 import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.AdapterView.OnItemSelectedListener
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
-import androidx.camera.core.ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
-import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
-import java.lang.Integer.min
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -136,6 +129,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
                 startCamera()

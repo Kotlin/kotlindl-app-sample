@@ -12,7 +12,7 @@
         android:layout_height="match_parent"
         app:scaleType="fillCenter"/>
 
-    <ai.onnxruntime.example.imageclassifier.DetectorView
+    <org.jetbrains.kotlinx.dl.example.app.DetectorView
         android:id="@+id/detector_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
