@@ -1,6 +1,6 @@
 ##  KotlinDL Android inference examples
 
-This repo demonstrates how to use KotlinDL for Android inference.
+This repo demonstrates how to use KotlinDL for neural network inference on Android devices.
 It contains a simple Android app that uses KotlinDL to demonstrate inference of a bunch of pre-trained models for different computer vision tasks.
 
 The list of demonstrated models includes:

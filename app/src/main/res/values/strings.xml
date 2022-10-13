@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">ort_image_classifier</string>
+    <string name="app_name">KotlinDL demo app</string>
+    <string name="models_dropdown">Select model</string>
+    <string name="inference_time">Inference Time</string>
+    <string name="kotlindl">KotlinDL Demo</string>
+    <string name="inference_time_placeholder">%d ms</string>
 </resources>

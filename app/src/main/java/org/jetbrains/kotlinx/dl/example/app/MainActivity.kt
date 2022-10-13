@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
-import android.view.Gravity
 import android.view.View
 import android.widget.AdapterView
 import android.widget.AdapterView.OnItemSelectedListener
@@ -17,6 +16,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
+import java.lang.RuntimeException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -24,11 +24,11 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
 
-    private var imageCapture: ImageCapture? = null
-    private var imageAnalysis: ImageAnalysis? = null
+    private lateinit var imageCapture: ImageCapture
+    private lateinit var imageAnalysis: ImageAnalysis
 
     @Volatile
-    private var pipelineAnalyzer: PipelineAnalyzer? = null
+    private lateinit var pipelineAnalyzer: PipelineAnalyzer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,30 +37,15 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         val modelsSpinnerAdapter = ArrayAdapter(
             this,
             android.R.layout.simple_spinner_item,
-            Pipelines.values().map { it.name })
+            Pipelines.values().map { it.name }
+        )
         modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
 
         with(models) {
             adapter = modelsSpinnerAdapter
-            onItemSelectedListener = object : OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: AdapterView<*>?,
-                    view: View?,
-                    position: Int,
-                    id: Long
-                ) {
-                    pipelineAnalyzer?.setPipeline(position)
-                }
-
-                override fun onNothingSelected(parent: AdapterView<*>?) {
-                    pipelineAnalyzer?.clear()
-                }
-            }
-            prompt = "Select model"
-            gravity = Gravity.CENTER
-
+            onItemSelectedListener = this@MainActivity
         }
-        // Request Camera permission
+
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -75,10 +60,9 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
 
-        cameraProviderFuture.addListener(Runnable {
+        cameraProviderFuture.addListener({
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
 
-            // Preview
             val preview = Preview.Builder()
                 .setTargetAspectRatio(AspectRatio.RATIO_4_3)
                 .build()
@@ -97,7 +81,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(backgroundExecutor, pipelineAnalyzer!!)
+                    it.setAnalyzer(backgroundExecutor, pipelineAnalyzer)
                 }
 
             try {
@@ -108,7 +92,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
                 runOnUiThread {
                     models.setSelection(0, false)
                 }
-            } catch (exc: Exception) {
+            } catch (exc: RuntimeException) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
         }, ContextCompat.getMainExecutor(this))
@@ -116,12 +100,6 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(baseContext, it) == PackageManager.PERMISSION_GRANTED
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        pipelineAnalyzer?.close()
-        backgroundExecutor.shutdown()
     }
 
     override fun onRequestPermissionsResult(
@@ -141,7 +119,6 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
                 ).show()
                 finish()
             }
-
         }
     }
 
@@ -161,7 +138,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
             }
             detected_item_1.text = item
             detected_item_value_1.text = value
-            inference_time_value.text = result.processTimeMs.toString() + "ms"
+            inference_time_value.text = getString(R.string.inference_time_placeholder, result.processTimeMs)
         }
     }
 
@@ -172,17 +149,23 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         percentMeter.progress = 0
     }
 
+    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        pipelineAnalyzer.setPipeline(position)
+    }
+
+    override fun onNothingSelected(parent: AdapterView<*>?) {
+        pipelineAnalyzer.clear()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        pipelineAnalyzer.close()
+        backgroundExecutor.shutdown()
+    }
+
     companion object {
         const val TAG = "KotlinDL demo app"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
-    }
-
-    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        pipelineAnalyzer?.setPipeline(position)
-    }
-
-    override fun onNothingSelected(parent: AdapterView<*>?) {
-        TODO("Not yet implemented")
     }
 }

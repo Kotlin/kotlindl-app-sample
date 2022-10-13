@@ -163,7 +163,6 @@ internal class ShufflenetPipeline(
 ) : Pipeline {
     private val labels = Imagenet.V1k.labels()
 
-    @RequiresApi(Build.VERSION_CODES.R)
     override fun analyze(image: ImageProxy): Pair<String, Float> {
         val bitmap = image.toBitmap()
         val rotation = image.imageInfo.rotationDegrees.toFloat()
