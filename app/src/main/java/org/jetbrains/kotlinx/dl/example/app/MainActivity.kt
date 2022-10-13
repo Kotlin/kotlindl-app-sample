@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     }
 
     companion object {
-        const val TAG = "ORTImageClassifier"
+        const val TAG = "KotlinDL demo app"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
