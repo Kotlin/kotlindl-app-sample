@@ -1,13 +1,7 @@
 package org.jetbrains.kotlinx.dl.example.app
 
-import android.content.Context
 import android.content.res.Resources
 import android.graphics.Bitmap
-import android.os.Build
-import android.os.SystemClock
-import android.util.Log
-import androidx.annotation.RequiresApi
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.jetbrains.kotlinx.dl.api.extension.argmax
 import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
@@ -28,107 +22,53 @@ import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import org.jetbrains.kotlinx.dl.dataset.Imagenet
 import org.jetbrains.kotlinx.dl.dataset.preprocessing.*
 import org.jetbrains.kotlinx.dl.dataset.preprocessing.camerax.toBitmap
-import org.jetbrains.kotlinx.dl.dataset.shape.TensorShape
-import kotlin.math.exp
 
-data class Result(
-    val prediction: Any,
-    val confidence: Float,
-    val processTimeMs: Long,
-    val width: Int,
-    val height: Int,
-)
 
-internal class PipelineAnalyzer(
-    context: Context,
-    private val resources: Resources,
-    private val uiUpdateCallBack: (Result?) -> Unit
-) : ImageAnalysis.Analyzer {
-    private val hub = ONNXModelHub(context)
-    private val pipelines = Pipelines.values().map { it.createPipeline(hub, resources) }
-
-    @Volatile
-    private var currentPipeline: Pipeline? = null
-
-    fun setPipeline(index: Int) {
-        currentPipeline = pipelines[index]
-    }
-
-    fun clear() {
-        currentPipeline = null
-    }
-
-    override fun analyze(image: ImageProxy) {
-        val start = SystemClock.uptimeMillis()
-        val result = currentPipeline?.analyze(image)
-        val end = SystemClock.uptimeMillis()
-
-        val rotationDegrees = image.imageInfo.rotationDegrees
-        image.close()
-
-        if (result == null) {
-            uiUpdateCallBack(null)
-        } else {
-            val (prediction, confidence) = result
-            val (width, height) = if (rotationDegrees == 0 || rotationDegrees == 180) image.width to image.height
-            else image.height to image.width
-            uiUpdateCallBack(Result(prediction, confidence, end - start, width, height))
-        }
-    }
-
-    fun close() {
-        clear()
-        pipelines.forEach(Pipeline::close)
-    }
-}
-
-interface Pipeline {
+interface InferencePipeline {
     fun analyze(image: ImageProxy): Pair<Any, Float>?
     fun close()
 }
 
 enum class Pipelines {
     SSDMobilenetV1 {
-        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return DetectionPipeline(ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub))
         }
     },
     EfficientNetLite4 {
-        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ClassificationPipeline(ONNXModels.CV.EfficientNet4Lite().pretrainedModel(hub))
         }
     },
     MobilenetV1 {
-        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ClassificationPipeline(ONNXModels.CV.MobilenetV1().pretrainedModel(hub))
         }
     },
     Shufflenet {
-        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ShufflenetPipeline(
                 OnnxInferenceModel(resources.openRawResource(R.raw.shufflenet).readBytes())
             )
         }
     },
     EfficientDetLite0 {
-        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return DetectionPipeline(ONNXModels.ObjectDetection.EfficientDetLite0.pretrainedModel(hub))
         }
     },
     MoveNetSinglePoseLighting {
-        override fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return PoseDetectionPipeline(ONNXModels.PoseDetection.MoveNetSinglePoseLighting.pretrainedModel(hub))
         }
     };
 
-    abstract fun createPipeline(hub: ONNXModelHub, resources: Resources): Pipeline
+    abstract fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline
 
 }
 
-internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
+internal class DetectionPipeline(private val model: SSDLikeModel) : InferencePipeline {
     override fun analyze(image: ImageProxy): Pair<DetectedObject, Float>? {
-        Log.i("DetectionPipeline", "image size ${image.width} x ${image.height}")
-
         val detections = model.inferUsing(CPU()) {
             it.detectObjects(image, 1)
         }
@@ -143,7 +83,7 @@ internal class DetectionPipeline(private val model: SSDLikeModel) : Pipeline {
     }
 }
 
-internal class ClassificationPipeline(private val model: ImageRecognitionModel) : Pipeline {
+internal class ClassificationPipeline(private val model: ImageRecognitionModel) : InferencePipeline {
 
     override fun analyze(image: ImageProxy): Pair<String, Float>? {
         val predictions = model.inferUsing(NNAPI()) {
@@ -160,7 +100,7 @@ internal class ClassificationPipeline(private val model: ImageRecognitionModel) 
 
 internal class ShufflenetPipeline(
     private val model: OnnxInferenceModel
-) : Pipeline {
+) : InferencePipeline {
     private val labels = Imagenet.V1k.labels()
 
     override fun analyze(image: ImageProxy): Pair<String, Float> {
@@ -190,30 +130,9 @@ internal class ShufflenetPipeline(
     override fun close() {
         model.close()
     }
-
-    internal class Softmax : FloatArrayOperation() {
-        override fun applyImpl(data: FloatArray, shape: TensorShape): FloatArray {
-            val logits = data.copyOf()
-            val max = logits[logits.argmax()]
-            var sum = 0.0f
-
-            for (i in logits.indices) {
-                logits[i] = exp(logits[i] - max)
-                sum += logits[i]
-            }
-
-            if (sum != 0.0f) {
-                for (i in logits.indices) {
-                    logits[i] /= sum
-                }
-            }
-
-            return logits
-        }
-    }
 }
 
-class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : Pipeline {
+class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : InferencePipeline {
     override fun analyze(image: ImageProxy): Pair<DetectedPose, Float>? {
         val detectedPose = model.inferUsing(CPU()) {
             it.detectPose(image)

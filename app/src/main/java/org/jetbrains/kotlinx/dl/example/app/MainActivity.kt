@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
     private lateinit var imageAnalysis: ImageAnalysis
 
     @Volatile
-    private lateinit var pipelineAnalyzer: PipelineAnalyzer
+    private lateinit var pipelineAnalyzer: ImageAnalyzer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            pipelineAnalyzer = PipelineAnalyzer(applicationContext, resources, ::updateUI)
+            pipelineAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
             imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
@@ -122,7 +122,7 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         }
     }
 
-    private fun updateUI(result: Result?) {
+    private fun updateUI(result: AnalysisResult?) {
         runOnUiThread {
             clearUi()
             if (result == null || result.confidence < 0.5f) {
