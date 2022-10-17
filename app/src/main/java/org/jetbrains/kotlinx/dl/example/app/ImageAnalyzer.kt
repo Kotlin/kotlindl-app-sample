@@ -5,7 +5,7 @@ import android.content.res.Resources
 import android.os.SystemClock
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
+import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModelHub
 
 internal class ImageAnalyzer(
     context: Context,

@@ -1,8 +1,8 @@
 package org.jetbrains.kotlinx.dl.example.app
 
-import org.jetbrains.kotlinx.dl.api.extension.argmax
-import org.jetbrains.kotlinx.dl.dataset.preprocessing.FloatArrayOperation
-import org.jetbrains.kotlinx.dl.dataset.shape.TensorShape
+import org.jetbrains.kotlinx.dl.api.core.shape.TensorShape
+import org.jetbrains.kotlinx.dl.impl.preprocessing.FloatArrayOperation
+import org.jetbrains.kotlinx.dl.impl.util.argmax
 import kotlin.math.exp
 
 class Softmax : FloatArrayOperation() {

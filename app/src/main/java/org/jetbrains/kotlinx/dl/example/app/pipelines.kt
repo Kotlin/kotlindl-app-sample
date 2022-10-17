@@ -3,25 +3,26 @@ package org.jetbrains.kotlinx.dl.example.app
 import android.content.res.Resources
 import android.graphics.Bitmap
 import androidx.camera.core.ImageProxy
-import org.jetbrains.kotlinx.dl.api.extension.argmax
-import org.jetbrains.kotlinx.dl.api.inference.imagerecognition.InputType
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
-import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModelHub
-import org.jetbrains.kotlinx.dl.api.inference.onnx.ONNXModels
-import org.jetbrains.kotlinx.dl.api.inference.onnx.OnnxInferenceModel
-import org.jetbrains.kotlinx.dl.api.inference.onnx.classification.ImageRecognitionModel
-import org.jetbrains.kotlinx.dl.api.inference.onnx.classification.predictTopKObjects
-import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionProvider.CPU
-import org.jetbrains.kotlinx.dl.api.inference.onnx.executionproviders.ExecutionProvider.NNAPI
-import org.jetbrains.kotlinx.dl.api.inference.onnx.inferUsing
-import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.SSDLikeModel
-import org.jetbrains.kotlinx.dl.api.inference.onnx.objectdetection.detectObjects
-import org.jetbrains.kotlinx.dl.api.inference.onnx.posedetection.SinglePoseDetectionModel
-import org.jetbrains.kotlinx.dl.api.inference.onnx.posedetection.detectPose
 import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
-import org.jetbrains.kotlinx.dl.dataset.Imagenet
-import org.jetbrains.kotlinx.dl.dataset.preprocessing.*
-import org.jetbrains.kotlinx.dl.dataset.preprocessing.camerax.toBitmap
+import org.jetbrains.kotlinx.dl.api.preprocessing.pipeline
+import org.jetbrains.kotlinx.dl.impl.dataset.Imagenet
+import org.jetbrains.kotlinx.dl.impl.inference.imagerecognition.InputType
+import org.jetbrains.kotlinx.dl.impl.preprocessing.*
+import org.jetbrains.kotlinx.dl.impl.preprocessing.camerax.toBitmap
+import org.jetbrains.kotlinx.dl.impl.util.argmax
+import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModelHub
+import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModels
+import org.jetbrains.kotlinx.dl.onnx.inference.OnnxInferenceModel
+import org.jetbrains.kotlinx.dl.onnx.inference.classification.ImageRecognitionModel
+import org.jetbrains.kotlinx.dl.onnx.inference.classification.predictTopKObjects
+import org.jetbrains.kotlinx.dl.onnx.inference.executionproviders.ExecutionProvider.CPU
+import org.jetbrains.kotlinx.dl.onnx.inference.executionproviders.ExecutionProvider.NNAPI
+import org.jetbrains.kotlinx.dl.onnx.inference.inferUsing
+import org.jetbrains.kotlinx.dl.onnx.inference.objectdetection.SSDLikeModel
+import org.jetbrains.kotlinx.dl.onnx.inference.objectdetection.detectObjects
+import org.jetbrains.kotlinx.dl.onnx.inference.posedetection.SinglePoseDetectionModel
+import org.jetbrains.kotlinx.dl.onnx.inference.posedetection.detectPose
 
 
 interface InferencePipeline {

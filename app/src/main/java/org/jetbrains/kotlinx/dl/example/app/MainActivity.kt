@@ -21,14 +21,14 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 
-class MainActivity : AppCompatActivity(), OnItemSelectedListener {
+class MainActivity : AppCompatActivity() {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
 
     private lateinit var imageCapture: ImageCapture
     private lateinit var imageAnalysis: ImageAnalysis
 
     @Volatile
-    private lateinit var pipelineAnalyzer: ImageAnalyzer
+    private lateinit var imageAnalyzer: ImageAnalyzer
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,9 +41,11 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         )
         modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
 
+        val modelSelectedListener = ModelItemSelectedListener(this)
+
         with(models) {
             adapter = modelsSpinnerAdapter
-            onItemSelectedListener = this@MainActivity
+            onItemSelectedListener = modelSelectedListener
         }
 
         if (allPermissionsGranted()) {
@@ -76,12 +78,12 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            pipelineAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
+            imageAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
             imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
                 .also {
-                    it.setAnalyzer(backgroundExecutor, pipelineAnalyzer)
+                    it.setAnalyzer(backgroundExecutor, imageAnalyzer)
                 }
 
             try {
@@ -149,17 +151,9 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         percentMeter.progress = 0
     }
 
-    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        pipelineAnalyzer.setPipeline(position)
-    }
-
-    override fun onNothingSelected(parent: AdapterView<*>?) {
-        pipelineAnalyzer.clear()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
-        pipelineAnalyzer.close()
+        imageAnalyzer.close()
         backgroundExecutor.shutdown()
     }
 
@@ -167,5 +161,16 @@ class MainActivity : AppCompatActivity(), OnItemSelectedListener {
         const val TAG = "KotlinDL demo app"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+    }
+
+    internal class ModelItemSelectedListener(private val activity: MainActivity) : OnItemSelectedListener {
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            activity.imageAnalyzer.setPipeline(position)
+        }
+
+        override fun onNothingSelected(p0: AdapterView<*>?) {
+            activity.imageAnalyzer.clear()
+        }
+
     }
 }
