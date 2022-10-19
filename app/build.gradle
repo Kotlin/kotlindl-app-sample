@@ -49,8 +49,8 @@ dependencies {
     // If you want to additionally use the CameraX View class
     implementation "androidx.camera:camera-view:1.1.0"
 
-    implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-visualization-android:0.5.SNAPSHOT'
-    implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-onnx-android:0.5.SNAPSHOT'
+    implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-visualization:0.5.SNAPSHOT'
+    implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-onnx:0.5.SNAPSHOT'
     implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'com.google.android.material:material:1.6.1'

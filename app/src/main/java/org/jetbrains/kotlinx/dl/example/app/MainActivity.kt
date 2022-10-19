@@ -77,8 +77,8 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
             imageAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
+            imageAnalyzer.setPipeline(0)
             imageAnalysis = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
@@ -153,7 +153,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        imageAnalyzer.close()
+        if (::imageAnalyzer.isInitialized) imageAnalyzer.close()
         backgroundExecutor.shutdown()
     }
 
@@ -165,11 +165,11 @@ class MainActivity : AppCompatActivity() {
 
     internal class ModelItemSelectedListener(private val activity: MainActivity) : OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-            activity.imageAnalyzer.setPipeline(position)
+            if (activity::imageAnalyzer.isInitialized) activity.imageAnalyzer.setPipeline(position)
         }
 
         override fun onNothingSelected(p0: AdapterView<*>?) {
-            activity.imageAnalyzer.clear()
+            if (activity::imageAnalyzer.isInitialized) activity.imageAnalyzer.clear()
         }
 
     }
