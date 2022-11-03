@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'kotlin-android-extensions'
+    id 'org.jetbrains.kotlinx.kotlin-deeplearning-gradle-plugin' version '0.5.0-alpha-1'
 }
 
 android {
@@ -56,4 +57,9 @@ dependencies {
     implementation 'com.google.android.material:material:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'io.github.microutils:kotlin-logging-jvm:2.1.21'
+}
+
+downloadKotlinDLModels {
+    models = ["SSDMobileNetV1", "EfficientNet4Lite", "MobilenetV1", "EfficientDetLite0", "MoveNetSinglePoseLighting"]
+    overwrite = false
 }
