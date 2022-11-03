@@ -2,7 +2,9 @@ package org.jetbrains.kotlinx.dl.example.app
 
 import android.content.res.Resources
 import android.graphics.Bitmap
+import android.graphics.Rect
 import androidx.camera.core.ImageProxy
+import org.jetbrains.kotlinx.dl.api.inference.facealignment.Landmark
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import org.jetbrains.kotlinx.dl.api.preprocessing.pipeline
@@ -18,6 +20,8 @@ import org.jetbrains.kotlinx.dl.onnx.inference.classification.ImageRecognitionMo
 import org.jetbrains.kotlinx.dl.onnx.inference.classification.predictTopKObjects
 import org.jetbrains.kotlinx.dl.onnx.inference.executionproviders.ExecutionProvider.CPU
 import org.jetbrains.kotlinx.dl.onnx.inference.executionproviders.ExecutionProvider.NNAPI
+import org.jetbrains.kotlinx.dl.onnx.inference.facealignment.FaceDetectionModel
+import org.jetbrains.kotlinx.dl.onnx.inference.facealignment.Fan2D106FaceAlignmentModel
 import org.jetbrains.kotlinx.dl.onnx.inference.inferUsing
 import org.jetbrains.kotlinx.dl.onnx.inference.objectdetection.SSDLikeModel
 import org.jetbrains.kotlinx.dl.onnx.inference.objectdetection.detectObjects
@@ -62,6 +66,14 @@ enum class Pipelines {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return PoseDetectionPipeline(ONNXModels.PoseDetection.MoveNetSinglePoseLighting.pretrainedModel(hub))
         }
+    },
+    FaceAlignment {
+        override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
+            val detectionModel = ONNXModels.FaceDetection.UltraFace320.pretrainedModel(hub)
+            val alignmentModel = ONNXModels.FaceAlignment.Fan2d106.pretrainedModel(hub)
+            return FaceAlignmentPipeline(detectionModel, alignmentModel)
+        }
+
     };
 
     abstract fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline
@@ -146,3 +158,47 @@ class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : Infer
 
     override fun close() = model.close()
 }
+
+class FaceAlignmentPipeline(
+    private val detectionModel: FaceDetectionModel,
+    private val alignmentModel: Fan2D106FaceAlignmentModel
+) : InferencePipeline {
+    override fun analyze(image: ImageProxy): Pair<FaceAlignmentResult, Float>? {
+        val bitmap = image.toBitmap(applyRotation = true)
+
+        val detectedObjects = detectionModel.detectFaces(bitmap, 1)
+        if (detectedObjects.isEmpty()) {
+            return null
+        }
+
+        val face = detectedObjects.first()
+        val faceRect = Rect(
+            (face.xMin * 0.9f * bitmap.width).toInt().coerceAtLeast(0),
+            (face.yMin * 0.9f * bitmap.height).toInt().coerceAtLeast(0),
+            (face.xMax * 1.1f * bitmap.width).toInt().coerceAtMost(bitmap.width),
+            (face.yMax * 1.1f * bitmap.height).toInt().coerceAtMost(bitmap.height)
+        )
+        val faceCrop = pipeline<Bitmap>().crop {
+            x = faceRect.left
+            y = faceRect.top
+            width = faceRect.width()
+            height = faceRect.height()
+        }.apply(bitmap)
+
+        val landmarks = alignmentModel.predict(faceCrop)
+            .map { landmark ->
+                Landmark(
+                    (faceRect.left + landmark.x * faceRect.width()) / bitmap.width,
+                    (faceRect.top + landmark.y * faceRect.height()) / bitmap.height
+                )
+            }
+        return FaceAlignmentResult(face, landmarks) to 1f
+    }
+
+    override fun close() {
+        detectionModel.close()
+        alignmentModel.close()
+    }
+}
+
+data class FaceAlignmentResult(val face: DetectedObject, val landmarks: List<Landmark>)

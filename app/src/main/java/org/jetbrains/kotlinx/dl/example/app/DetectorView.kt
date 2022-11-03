@@ -52,6 +52,20 @@ class DetectorView(context: Context, attrs: AttributeSet) :
                 landmarkPaint, objectPaint, radius,
                 currentBounds
             )
+
+            is FaceAlignmentResult -> {
+                drawObject(
+                    prediction.face,
+                    objectPaint, textPaint,
+                    currentBounds
+                )
+                drawLandmarks(
+                    prediction.landmarks,
+                    landmarkPaint,
+                    radius,
+                    currentBounds
+                )
+            }
         }
     }
 }

@@ -60,6 +60,6 @@ dependencies {
 }
 
 downloadKotlinDLModels {
-    models = ["SSDMobileNetV1", "EfficientNet4Lite", "MobilenetV1", "EfficientDetLite0", "MoveNetSinglePoseLighting"]
+    models = ["SSDMobileNetV1", "EfficientNet4Lite", "MobilenetV1", "EfficientDetLite0", "MoveNetSinglePoseLighting", "UltraFace320", "Fan2d106"]
     overwrite = false
 }
