@@ -12,10 +12,14 @@ internal class ImageAnalyzer(
     private val uiUpdateCallBack: (AnalysisResult?) -> Unit
 ) {
     private val hub = ONNXModelHub(context)
-    private val pipelines = Pipelines.values().map { it.createPipeline(hub, resources) }
+
+    val pipelinesList get() = Pipelines.values()
+    private val pipelines = pipelinesList.map { it.createPipeline(hub, resources) }
 
     @Volatile
-    private var currentPipeline: InferencePipeline? = null
+    var currentPipelineIndex: Int = 0
+        private set
+    private val currentPipeline: InferencePipeline? get() = pipelines.getOrNull(currentPipelineIndex)
 
     fun analyze(image: ImageProxy, isImageFlipped: Boolean) {
         val start = SystemClock.uptimeMillis()
@@ -39,13 +43,13 @@ internal class ImageAnalyzer(
             )
         }
     }
-    
+
     fun setPipeline(index: Int) {
-        currentPipeline = pipelines[index]
+        currentPipelineIndex = index
     }
 
     fun clear() {
-        currentPipeline = null
+        currentPipelineIndex = -1
     }
 
     fun close() {

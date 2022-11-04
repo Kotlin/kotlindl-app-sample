@@ -35,20 +35,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val modelsSpinnerAdapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            Pipelines.values().map { it.name }
-        )
-        modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-
-        val modelSelectedListener = ModelItemSelectedListener(this)
-
-        with(models) {
-            adapter = modelsSpinnerAdapter
-            onItemSelectedListener = modelSelectedListener
-        }
-
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -62,7 +48,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
         cameraProviderFuture.addListener({
             val imageAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
             cameraProcessor = CameraProcessor(
@@ -76,7 +61,15 @@ class MainActivity : AppCompatActivity() {
             }
 
             runOnUiThread {
-                models.setSelection(0, false)
+                val modelsSpinnerAdapter = ArrayAdapter(
+                    this,
+                    android.R.layout.simple_spinner_item,
+                    imageAnalyzer.pipelinesList.map { it.name }
+                )
+                modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+                models.adapter = modelsSpinnerAdapter
+                models.onItemSelectedListener = ModelItemSelectedListener()
+                models.setSelection(imageAnalyzer.currentPipelineIndex, false)
 
                 backCameraSwitch.isChecked = cameraProcessor.isBackCamera
                 backCameraSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -151,13 +144,13 @@ class MainActivity : AppCompatActivity() {
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 
-    internal class ModelItemSelectedListener(private val activity: MainActivity) : OnItemSelectedListener {
+    private inner class ModelItemSelectedListener : OnItemSelectedListener {
         override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-            if (activity::cameraProcessor.isInitialized) activity.cameraProcessor.imageAnalyzer.setPipeline(position)
+            if (::cameraProcessor.isInitialized) cameraProcessor.imageAnalyzer.setPipeline(position)
         }
 
         override fun onNothingSelected(p0: AdapterView<*>?) {
-            if (activity::cameraProcessor.isInitialized) activity.cameraProcessor.imageAnalyzer.clear()
+            if (::cameraProcessor.isInitialized) cameraProcessor.imageAnalyzer.clear()
         }
     }
 }
