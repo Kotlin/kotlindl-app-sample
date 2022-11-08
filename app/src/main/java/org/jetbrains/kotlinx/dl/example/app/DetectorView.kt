@@ -7,6 +7,7 @@ import android.text.TextPaint
 import android.util.AttributeSet
 import androidx.camera.view.PreviewView.ScaleType
 import androidx.core.content.ContextCompat
+import org.jetbrains.kotlinx.dl.api.inference.FlatShape
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import org.jetbrains.kotlinx.dl.visualization.*
@@ -42,25 +43,25 @@ class DetectorView(context: Context, attrs: AttributeSet) :
         val currentBounds = bounds ?: bounds()
         when (val prediction = detection.prediction) {
             is DetectedObject -> drawObject(
-                prediction,
+                prediction.flipIfNeeded(detection.isImageFlipped),
                 objectPaint, textPaint,
                 currentBounds
             )
 
             is DetectedPose -> drawPose(
-                prediction,
+                prediction.flipIfNeeded(detection.isImageFlipped),
                 landmarkPaint, objectPaint, radius,
                 currentBounds
             )
 
             is FaceAlignmentResult -> {
                 drawObject(
-                    prediction.face,
+                    prediction.face.flipIfNeeded(detection.isImageFlipped),
                     objectPaint, textPaint,
                     currentBounds
                 )
                 drawLandmarks(
-                    prediction.landmarks,
+                    prediction.landmarks.map { it.flipIfNeeded(detection.isImageFlipped) },
                     landmarkPaint,
                     radius,
                     currentBounds
@@ -68,4 +69,13 @@ class DetectorView(context: Context, attrs: AttributeSet) :
             }
         }
     }
+}
+
+private fun <T : FlatShape<T>> T.flip(): T {
+    return map { x, y -> 1 - x to y }
+}
+
+private fun <T : FlatShape<T>> T.flipIfNeeded(isImageFlipped: Boolean): T {
+    if (isImageFlipped) return flip()
+    return this
 }

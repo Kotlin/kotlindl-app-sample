@@ -3,7 +3,6 @@ package org.jetbrains.kotlinx.dl.example.app
 import android.content.Context
 import android.content.res.Resources
 import android.os.SystemClock
-import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModelHub
 
@@ -11,14 +10,14 @@ internal class ImageAnalyzer(
     context: Context,
     private val resources: Resources,
     private val uiUpdateCallBack: (AnalysisResult?) -> Unit
-) : ImageAnalysis.Analyzer {
+) {
     private val hub = ONNXModelHub(context)
     private val pipelines = Pipelines.values().map { it.createPipeline(hub, resources) }
 
     @Volatile
     private var currentPipeline: InferencePipeline? = null
-    
-    override fun analyze(image: ImageProxy) {
+
+    fun analyze(image: ImageProxy, isImageFlipped: Boolean) {
         val start = SystemClock.uptimeMillis()
         val result = currentPipeline?.analyze(image)
         val end = SystemClock.uptimeMillis()
@@ -32,7 +31,12 @@ internal class ImageAnalyzer(
             val (prediction, confidence) = result
             val (width, height) = if (rotationDegrees == 0 || rotationDegrees == 180) image.width to image.height
             else image.height to image.width
-            uiUpdateCallBack(AnalysisResult(prediction, confidence, end - start, width, height))
+            uiUpdateCallBack(
+                AnalysisResult(
+                    prediction, confidence, end - start, width, height,
+                    isImageFlipped
+                )
+            )
         }
     }
     
@@ -56,4 +60,5 @@ data class AnalysisResult(
     val processTimeMs: Long,
     val width: Int,
     val height: Int,
+    val isImageFlipped: Boolean
 )

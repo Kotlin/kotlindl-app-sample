@@ -11,6 +11,8 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
+import androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+import androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -75,6 +77,13 @@ class MainActivity : AppCompatActivity() {
 
             runOnUiThread {
                 models.setSelection(0, false)
+
+                backCameraSwitch.isChecked = cameraProcessor.isBackCamera
+                backCameraSwitch.setOnCheckedChangeListener { _, isChecked ->
+                    if (!cameraProcessor.setBackCamera(isChecked, this)) {
+                        showError("Could not switch to the lens facing ${if (cameraProcessor.isBackCamera) "back" else "front"}.")
+                    }
+                }
             }
         }, ContextCompat.getMainExecutor(this))
     }
@@ -156,40 +165,62 @@ class MainActivity : AppCompatActivity() {
 private class CameraProcessor(
     val imageAnalyzer: ImageAnalyzer,
     private val cameraProvider: ProcessCameraProvider,
-    surfaceProvider: Preview.SurfaceProvider,
-    executor: Executor
+    private val surfaceProvider: Preview.SurfaceProvider,
+    private val executor: Executor
 ) {
-    private val imagePreview = Preview.Builder()
-        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
-        .build()
-        .also {
-            it.setSurfaceProvider(surfaceProvider)
-        }
-    private val imageAnalysis = ImageAnalysis.Builder()
-        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-        .build()
-        .also {
-            it.setAnalyzer(executor, imageAnalyzer)
-        }
+    @Volatile
+    var isBackCamera: Boolean = true
+        private set
+    private val cameraSelector get() = if (isBackCamera) DEFAULT_BACK_CAMERA else DEFAULT_FRONT_CAMERA
 
     fun bindCameraUseCases(lifecycleOwner: LifecycleOwner): Boolean {
         try {
             cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                lifecycleOwner,
-                CameraSelector.DEFAULT_BACK_CAMERA,
-                imagePreview,
-                imageAnalysis
-            )
-            return true
+
+            val imagePreview = Preview.Builder()
+                .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                .build()
+                .also {
+                    it.setSurfaceProvider(surfaceProvider)
+                }
+            val imageAnalysis = ImageAnalysis.Builder()
+                .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build()
+                .also {
+                    it.setAnalyzer(executor, ImageAnalyzerProxy(imageAnalyzer, isBackCamera))
+                }
+
+            if (cameraProvider.hasCamera(cameraSelector)) {
+                cameraProvider.bindToLifecycle(
+                    lifecycleOwner,
+                    cameraSelector,
+                    imagePreview,
+                    imageAnalysis
+                )
+                return true
+            }
         } catch (exc: RuntimeException) {
             Log.e(MainActivity.TAG, "Use case binding failed", exc)
         }
         return false
     }
 
+    fun setBackCamera(backCamera: Boolean, lifecycleOwner: LifecycleOwner): Boolean {
+        if (backCamera == isBackCamera) return true
+
+        isBackCamera = backCamera
+        return bindCameraUseCases(lifecycleOwner)
+    }
+
     fun close() {
         cameraProvider.unbindAll()
         imageAnalyzer.close()
+    }
+}
+
+private class ImageAnalyzerProxy(private val delegate: ImageAnalyzer, private val isBackCamera: Boolean): ImageAnalysis.Analyzer {
+    override fun analyze(image: ImageProxy) {
+        delegate.analyze(image, !isBackCamera)
     }
 }
