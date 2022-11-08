@@ -4,9 +4,11 @@ import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.camera.core.ImageProxy
+import org.jetbrains.kotlinx.dl.api.inference.FlatShape
 import org.jetbrains.kotlinx.dl.api.inference.facealignment.Landmark
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
+import org.jetbrains.kotlinx.dl.api.preprocessing.Operation
 import org.jetbrains.kotlinx.dl.api.preprocessing.pipeline
 import org.jetbrains.kotlinx.dl.impl.dataset.Imagenet
 import org.jetbrains.kotlinx.dl.impl.inference.imagerecognition.InputType
@@ -15,6 +17,7 @@ import org.jetbrains.kotlinx.dl.impl.preprocessing.camerax.toBitmap
 import org.jetbrains.kotlinx.dl.impl.util.argmax
 import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModelHub
 import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModels
+import org.jetbrains.kotlinx.dl.onnx.inference.OnnxHighLevelModel
 import org.jetbrains.kotlinx.dl.onnx.inference.OnnxInferenceModel
 import org.jetbrains.kotlinx.dl.onnx.inference.classification.ImageRecognitionModel
 import org.jetbrains.kotlinx.dl.onnx.inference.classification.predictTopKObjects
@@ -178,20 +181,8 @@ class FaceAlignmentPipeline(
             (face.xMax * 1.1f * bitmap.width).toInt().coerceAtMost(bitmap.width),
             (face.yMax * 1.1f * bitmap.height).toInt().coerceAtMost(bitmap.height)
         )
-        val faceCrop = pipeline<Bitmap>().crop {
-            x = faceRect.left
-            y = faceRect.top
-            width = faceRect.width()
-            height = faceRect.height()
-        }.apply(bitmap)
 
-        val landmarks = alignmentModel.predict(faceCrop)
-            .map { landmark ->
-                Landmark(
-                    (faceRect.left + landmark.x * faceRect.width()) / bitmap.width,
-                    (faceRect.top + landmark.y * faceRect.height()) / bitmap.height
-                )
-            }
+        val landmarks = alignmentModel.predictOnCrop(bitmap, faceRect)
         return FaceAlignmentResult(face, landmarks) to 1f
     }
 
@@ -202,3 +193,25 @@ class FaceAlignmentPipeline(
 }
 
 data class FaceAlignmentResult(val face: DetectedObject, val landmarks: List<Landmark>)
+
+private fun <I> Operation<I, Bitmap>.cropRect(rect: Rect): Operation<I, Bitmap> {
+    return crop {
+        x = rect.left
+        y = rect.top
+        width = rect.width()
+        height = rect.height()
+    }
+}
+
+private fun <T : FlatShape<T>> OnnxHighLevelModel<Bitmap, List<T>>.predictOnCrop(
+    bitmap: Bitmap,
+    crop: Rect
+): List<T> {
+    val cropBitmap = pipeline<Bitmap>().cropRect(crop).apply(bitmap)
+    return predict(cropBitmap).map { shape ->
+        shape.map { x, y ->
+            (crop.left + x * crop.width()) / bitmap.width to
+                    (crop.top + y * crop.height()) / bitmap.height
+        }
+    }
+}
