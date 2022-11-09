@@ -10,5 +10,6 @@
 
     <color name="semi_transparent">#66000000</color>
     <color name="semi_transparent_white">#77FFFFFF</color>
+    <color name="gray">#FF777777</color>
 
 </resources>

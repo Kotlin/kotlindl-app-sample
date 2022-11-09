@@ -13,7 +13,10 @@ internal class ImageAnalyzer(
 ) {
     private val hub = ONNXModelHub(context)
 
-    val pipelinesList get() = Pipelines.values()
+    val pipelinesList = Pipelines.values().sortedWith(Comparator { o1, o2 ->
+        if (o1.task != o2.task) return@Comparator o1.task.ordinal - o2.task.ordinal
+        o1.ordinal - o2.ordinal
+    })
     private val pipelines = pipelinesList.map { it.createPipeline(hub, resources) }
 
     @Volatile

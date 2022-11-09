@@ -61,12 +61,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             runOnUiThread {
-                val modelsSpinnerAdapter = ArrayAdapter(
+                val modelsSpinnerAdapter = PipelineSelectorAdapter(
                     this,
-                    android.R.layout.simple_spinner_item,
-                    imageAnalyzer.pipelinesList.map { it.name }
+                    R.layout.pipelines_selector,
+                    imageAnalyzer.pipelinesList
                 )
-                modelsSpinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
                 models.adapter = modelsSpinnerAdapter
                 models.onItemSelectedListener = ModelItemSelectedListener()
                 models.setSelection(imageAnalyzer.currentPipelineIndex, false)

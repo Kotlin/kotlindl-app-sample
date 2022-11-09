@@ -112,6 +112,7 @@
                 android:layout_gravity="center"
                 android:layout_weight="1"
                 android:background="@color/semi_transparent_white"
+                android:popupBackground="@color/white"
                 android:prompt="@string/models_dropdown"
                 android:spinnerMode="dropdown" />
         </LinearLayout>
