@@ -29,13 +29,20 @@ class MainActivity : AppCompatActivity() {
 
     @Volatile
     private lateinit var cameraProcessor: CameraProcessor
+    private var currentPipeline: Int = 0
+    private var isBackCamera: Boolean = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        savedInstanceState?.apply {
+            currentPipeline = getInt(CURRENT_PIPELINE, 0)
+            isBackCamera = getBoolean(IS_BACK_CAMERA, true)
+        }
+
         if (allPermissionsGranted()) {
-            startCamera()
+            startCamera(currentPipeline, isBackCamera)
         } else {
             ActivityCompat.requestPermissions(
                 this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
@@ -45,16 +52,20 @@ class MainActivity : AppCompatActivity() {
         detector_view.scaleType = viewFinder.scaleType
     }
 
-    private fun startCamera() {
+    private fun startCamera(currentPipelineIndex: Int, isBackCamera: Boolean) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
-            val imageAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
+            val imageAnalyzer = ImageAnalyzer(
+                applicationContext, resources, ::updateUI,
+                currentPipelineIndex
+            )
             runOnUiThread {
                 cameraProcessor = CameraProcessor(
                     imageAnalyzer,
                     cameraProviderFuture.get(),
                     viewFinder.surfaceProvider,
-                    backgroundExecutor
+                    backgroundExecutor,
+                    isBackCamera
                 )
                 if (!cameraProcessor.bindCameraUseCases(this)) {
                     showError("Could not initialize camera.")
@@ -91,10 +102,18 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                startCamera()
+                startCamera(currentPipeline, isBackCamera)
             } else {
                 showError("Permissions not granted by the user.")
             }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::cameraProcessor.isInitialized) {
+            outState.putInt(CURRENT_PIPELINE, cameraProcessor.imageAnalyzer.currentPipelineIndex)
+            outState.putBoolean(IS_BACK_CAMERA, cameraProcessor.isBackCamera)
         }
     }
 
@@ -140,6 +159,8 @@ class MainActivity : AppCompatActivity() {
         const val TAG = "KotlinDL demo app"
         private const val REQUEST_CODE_PERMISSIONS = 10
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
+        private const val CURRENT_PIPELINE = "current_pipeline"
+        private const val IS_BACK_CAMERA = "is_back_camera"
     }
 
     private inner class ModelItemSelectedListener : OnItemSelectedListener {
@@ -157,10 +178,11 @@ private class CameraProcessor(
     val imageAnalyzer: ImageAnalyzer,
     private val cameraProvider: ProcessCameraProvider,
     private val surfaceProvider: Preview.SurfaceProvider,
-    private val executor: ExecutorService
+    private val executor: ExecutorService,
+    isInitialBackCamera: Boolean
 ) {
     @Volatile
-    var isBackCamera: Boolean = true
+    var isBackCamera: Boolean = isInitialBackCamera
         private set
     private val cameraSelector get() = if (isBackCamera) DEFAULT_BACK_CAMERA else DEFAULT_FRONT_CAMERA
 

@@ -9,7 +9,8 @@ import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModelHub
 internal class ImageAnalyzer(
     context: Context,
     private val resources: Resources,
-    private val uiUpdateCallBack: (AnalysisResult?) -> Unit
+    private val uiUpdateCallBack: (AnalysisResult?) -> Unit,
+    initialPipelineIndex: Int = 0
 ) {
     private val hub = ONNXModelHub(context)
 
@@ -20,7 +21,7 @@ internal class ImageAnalyzer(
     private val pipelines = pipelinesList.map { it.createPipeline(hub, resources) }
 
     @Volatile
-    var currentPipelineIndex: Int = 0
+    var currentPipelineIndex: Int = initialPipelineIndex
         private set
     private val currentPipeline: InferencePipeline? get() = pipelines.getOrNull(currentPipelineIndex)
 
