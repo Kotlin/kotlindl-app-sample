@@ -7,7 +7,6 @@ import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.AdapterView.OnItemSelectedListener
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
@@ -19,10 +18,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
-import java.lang.RuntimeException
-import java.util.concurrent.Executor
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 
 class MainActivity : AppCompatActivity() {
@@ -50,17 +49,17 @@ class MainActivity : AppCompatActivity() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val imageAnalyzer = ImageAnalyzer(applicationContext, resources, ::updateUI)
-            cameraProcessor = CameraProcessor(
-                imageAnalyzer,
-                cameraProviderFuture.get(),
-                viewFinder.surfaceProvider,
-                backgroundExecutor
-            )
-            if (!cameraProcessor.bindCameraUseCases(this)) {
-                showError("Could not initialize camera.")
-            }
-
             runOnUiThread {
+                cameraProcessor = CameraProcessor(
+                    imageAnalyzer,
+                    cameraProviderFuture.get(),
+                    viewFinder.surfaceProvider,
+                    backgroundExecutor
+                )
+                if (!cameraProcessor.bindCameraUseCases(this)) {
+                    showError("Could not initialize camera.")
+                }
+
                 val modelsSpinnerAdapter = PipelineSelectorAdapter(
                     this,
                     R.layout.pipelines_selector,
@@ -77,7 +76,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-        }, ContextCompat.getMainExecutor(this))
+        }, backgroundExecutor)
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
@@ -158,7 +157,7 @@ private class CameraProcessor(
     val imageAnalyzer: ImageAnalyzer,
     private val cameraProvider: ProcessCameraProvider,
     private val surfaceProvider: Preview.SurfaceProvider,
-    private val executor: Executor
+    private val executor: ExecutorService
 ) {
     @Volatile
     var isBackCamera: Boolean = true
@@ -207,7 +206,11 @@ private class CameraProcessor(
 
     fun close() {
         cameraProvider.unbindAll()
-        imageAnalyzer.close()
+        try {
+            executor.submit { imageAnalyzer.close() }.get(500, TimeUnit.MILLISECONDS)
+        } catch (_: InterruptedException) {
+        } catch (_: TimeoutException) {
+        }
     }
 }
 
