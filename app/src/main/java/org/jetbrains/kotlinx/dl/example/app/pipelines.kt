@@ -37,73 +37,55 @@ interface InferencePipeline {
     fun close()
 }
 
-enum class Tasks {
-    Classification,
-    ObjectDetection,
-    PoseDetection,
-    FaceAlignment
+enum class Tasks(val descriptionId: Int) {
+    Classification(R.string.model_type_classification),
+    ObjectDetection(R.string.model_type_object_detection),
+    PoseDetection(R.string.model_type_pose_detection),
+    FaceAlignment(R.string.model_type_face_alignment)
 }
 
-enum class Pipelines {
-    SSDMobilenetV1 {
-        override val task = Tasks.ObjectDetection
-
+enum class Pipelines(val task: Tasks, val descriptionId: Int) {
+    SSDMobilenetV1(Tasks.ObjectDetection, R.string.pipeline_ssd_mobilenet_v1) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return DetectionPipeline(ONNXModels.ObjectDetection.SSDMobileNetV1.pretrainedModel(hub))
         }
     },
-    EfficientNetLite4 {
-        override val task = Tasks.Classification
-
+    EfficientNetLite4(Tasks.Classification, R.string.pipeline_efficient_net_lite_4) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ClassificationPipeline(ONNXModels.CV.EfficientNet4Lite().pretrainedModel(hub))
         }
     },
-    MobilenetV1 {
-        override val task = Tasks.Classification
-
+    MobilenetV1(Tasks.Classification, R.string.pipeline_mobilenet_v1) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ClassificationPipeline(ONNXModels.CV.MobilenetV1().pretrainedModel(hub))
         }
     },
-    Shufflenet {
-        override val task = Tasks.Classification
-
+    Shufflenet(Tasks.Classification, R.string.pipeline_shufflenet) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ShufflenetPipeline(
                 OnnxInferenceModel(resources.openRawResource(R.raw.shufflenet).readBytes())
             )
         }
     },
-    EfficientDetLite0 {
-        override val task = Tasks.ObjectDetection
-
+    EfficientDetLite0(Tasks.ObjectDetection, R.string.pipeline_efficient_det_lite_0) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return DetectionPipeline(ONNXModels.ObjectDetection.EfficientDetLite0.pretrainedModel(hub))
         }
     },
-    MoveNetSinglePoseLighting {
-        override val task = Tasks.PoseDetection
-
+    MoveNetSinglePoseLighting(Tasks.PoseDetection, R.string.pipeline_move_net_single_pose_lighting) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return PoseDetectionPipeline(ONNXModels.PoseDetection.MoveNetSinglePoseLighting.pretrainedModel(hub))
         }
     },
-    FaceAlignment {
-        override val task = Tasks.FaceAlignment
-
+    FaceAlignment(Tasks.FaceAlignment, R.string.pipeline_face_alignment) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             val detectionModel = ONNXModels.FaceDetection.UltraFace320.pretrainedModel(hub)
             val alignmentModel = ONNXModels.FaceAlignment.Fan2d106.pretrainedModel(hub)
             return FaceAlignmentPipeline(detectionModel, alignmentModel)
         }
-
     };
 
-    abstract val task: Tasks
-
     abstract fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline
-
 }
 
 internal class DetectionPipeline(private val model: SSDLikeModel) : InferencePipeline {

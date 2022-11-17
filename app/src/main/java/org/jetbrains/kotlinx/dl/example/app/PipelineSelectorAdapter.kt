@@ -27,8 +27,8 @@ class PipelineSelectorAdapter(context: Context, private val resource: Int, items
         )
 
         val pipeline = getItem(position)
-        view.text1.text = pipeline?.name ?: ""
-        view.text2.text = pipeline?.task?.name ?: ""
+        view.text1.text = pipeline?.descriptionId?.let { context.getString(it) } ?: ""
+        view.text2.text = pipeline?.task?.descriptionId?.let { context.getString(it) } ?: ""
 
         return view
     }
