@@ -63,7 +63,9 @@ enum class Pipelines(val task: Tasks, val descriptionId: Int) {
     Shufflenet(Tasks.Classification, R.string.pipeline_shufflenet) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
             return ShufflenetPipeline(
-                OnnxInferenceModel(resources.openRawResource(R.raw.shufflenet).readBytes())
+                OnnxInferenceModel {
+                    resources.openRawResource(R.raw.shufflenet).use { it.readBytes() }
+                }
             )
         }
     },
