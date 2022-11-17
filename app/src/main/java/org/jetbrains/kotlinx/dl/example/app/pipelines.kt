@@ -163,7 +163,7 @@ class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : Infer
 
         if (detectedPose.landmarks.isEmpty()) return null
 
-        return detectedPose to 1f
+        return detectedPose to detectedPose.landmarks.maxOf { it.probability }
     }
 
     override fun close() = model.close()
