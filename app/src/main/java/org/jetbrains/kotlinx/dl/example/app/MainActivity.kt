@@ -129,7 +129,7 @@ class MainActivity : AppCompatActivity() {
                 return@runOnUiThread
             }
 
-            if (result is AnalysisResult.WithPrediction && result.prediction.confidence >= 0.5f) {
+            if (result is AnalysisResult.WithPrediction) {
                 detector_view.setDetection(result)
                 detected_item_1.text = result.prediction.getText(this)
                 val confidencePercent = result.prediction.confidence * 100

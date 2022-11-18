@@ -40,7 +40,7 @@ internal class ImageAnalyzer(
         val rotationDegrees = image.imageInfo.rotationDegrees
         image.close()
 
-        if (result == null) {
+        if (result == null || result.confidence < confidenceThreshold) {
             uiUpdateCallBack(AnalysisResult.Empty(end - start))
         } else {
             uiUpdateCallBack(
@@ -63,6 +63,10 @@ internal class ImageAnalyzer(
     fun close() {
         clear()
         pipelines.forEach(InferencePipeline::close)
+    }
+
+    companion object {
+        private const val confidenceThreshold = 0.5f
     }
 }
 
