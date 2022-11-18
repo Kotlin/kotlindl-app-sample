@@ -17,4 +17,5 @@
     <string name="pipeline_face_alignment">UltraFace320 + Fan2d106</string>
     <string name="label_pose">pose</string>
     <string name="label_face">face</string>
+    <string name="label_objects">%d objects</string>
 </resources>

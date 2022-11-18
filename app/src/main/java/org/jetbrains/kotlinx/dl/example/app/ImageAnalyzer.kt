@@ -34,7 +34,7 @@ internal class ImageAnalyzer(
         }
 
         val start = SystemClock.uptimeMillis()
-        val result = pipeline.analyze(image)
+        val result = pipeline.analyze(image, confidenceThreshold)
         val end = SystemClock.uptimeMillis()
 
         val rotationDegrees = image.imageInfo.rotationDegrees
