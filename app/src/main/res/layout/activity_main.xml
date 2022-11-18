@@ -44,7 +44,7 @@
             android:paddingRight="6dp">
 
             <TextView
-                android:id="@+id/detected_item_1"
+                android:id="@+id/detected_item_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
@@ -52,7 +52,7 @@
                 android:textSize="16sp" />
 
             <TextView
-                android:id="@+id/detected_item_value_1"
+                android:id="@+id/detected_item_confidence"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="end"

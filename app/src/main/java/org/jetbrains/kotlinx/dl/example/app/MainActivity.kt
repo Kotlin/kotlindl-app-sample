@@ -131,10 +131,10 @@ class MainActivity : AppCompatActivity() {
 
             if (result is AnalysisResult.WithPrediction) {
                 detector_view.setDetection(result)
-                detected_item_1.text = result.prediction.getText(this)
+                detected_item_text.text = result.prediction.getText(this)
                 val confidencePercent = result.prediction.confidence * 100
                 percentMeter.progress = confidencePercent.toInt()
-                detected_item_value_1.text = "%.2f%%".format(confidencePercent)
+                detected_item_confidence.text = "%.2f%%".format(confidencePercent)
             } else {
                 detector_view.setDetection(null)
             }
@@ -143,8 +143,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearUi() {
-        detected_item_1.text = ""
-        detected_item_value_1.text = ""
+        detected_item_text.text = ""
+        detected_item_confidence.text = ""
         inference_time_value.text = ""
         percentMeter.progress = 0
     }
