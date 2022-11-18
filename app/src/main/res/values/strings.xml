@@ -15,4 +15,6 @@
     <string name="pipeline_efficient_det_lite_0">EfficientDetLite0</string>
     <string name="pipeline_move_net_single_pose_lighting">MoveNetSinglePoseLighting</string>
     <string name="pipeline_face_alignment">UltraFace320 + Fan2d106</string>
+    <string name="label_pose">pose</string>
+    <string name="label_face">face</string>
 </resources>

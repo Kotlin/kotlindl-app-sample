@@ -8,6 +8,7 @@ import android.util.AttributeSet
 import androidx.camera.view.PreviewView.ScaleType
 import androidx.core.content.ContextCompat
 import org.jetbrains.kotlinx.dl.api.inference.FlatShape
+import org.jetbrains.kotlinx.dl.api.inference.facealignment.Landmark
 import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import org.jetbrains.kotlinx.dl.api.inference.posedetection.DetectedPose
 import org.jetbrains.kotlinx.dl.visualization.*
@@ -35,47 +36,39 @@ class DetectorView(context: Context, attrs: AttributeSet) :
 
     override fun onDetectionSet(detection: AnalysisResult?) {
         bounds = detection?.let {
-            getPreviewImageBounds(it.width, it.height, width, height, scaleType)
+            getPreviewImageBounds(it.metadata.width, it.metadata.height, width, height, scaleType)
         }
     }
 
     override fun Canvas.drawDetection(detection: AnalysisResult) {
         val currentBounds = bounds ?: bounds()
-        when (val prediction = detection.prediction) {
-            is DetectedObject -> drawObject(
-                prediction.flipIfNeeded(detection.isImageFlipped),
-                objectPaint, textPaint,
-                currentBounds
-            )
-
-            is DetectedPose -> drawPose(
-                prediction.flipIfNeeded(detection.isImageFlipped),
-                landmarkPaint, objectPaint, radius,
-                currentBounds
-            )
-
-            is FaceAlignmentResult -> {
-                drawObject(
-                    prediction.face.flipIfNeeded(detection.isImageFlipped),
+        for (s in detection.prediction.shapes) {
+            when (val shape = if (detection.metadata.isImageFlipped) s.flip() else s) {
+                is DetectedObject -> drawObject(
+                    shape,
                     objectPaint, textPaint,
                     currentBounds
                 )
-                drawLandmarks(
-                    prediction.landmarks.map { it.flipIfNeeded(detection.isImageFlipped) },
-                    landmarkPaint,
-                    radius,
+
+                is DetectedPose -> drawPose(
+                    shape,
+                    landmarkPaint, objectPaint, radius,
                     currentBounds
                 )
+
+                is Landmark -> {
+                    drawLandmarks(
+                        listOf(shape),
+                        landmarkPaint,
+                        radius,
+                        currentBounds
+                    )
+                }
             }
         }
     }
 }
 
-private fun <T : FlatShape<T>> T.flip(): T {
+private fun FlatShape<*>.flip(): FlatShape<*> {
     return map { x, y -> 1 - x to y }
-}
-
-private fun <T : FlatShape<T>> T.flipIfNeeded(isImageFlipped: Boolean): T {
-    if (isImageFlipped) return flip()
-    return this
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Resources
 import android.os.SystemClock
 import androidx.camera.core.ImageProxy
+import org.jetbrains.kotlinx.dl.api.inference.FlatShape
 import org.jetbrains.kotlinx.dl.onnx.inference.ONNXModelHub
 
 internal class ImageAnalyzer(
@@ -36,13 +37,10 @@ internal class ImageAnalyzer(
         if (result == null) {
             uiUpdateCallBack(null)
         } else {
-            val (prediction, confidence) = result
-            val (width, height) = if (rotationDegrees == 0 || rotationDegrees == 180) image.width to image.height
-            else image.height to image.width
             uiUpdateCallBack(
                 AnalysisResult(
-                    prediction, confidence, end - start, width, height,
-                    isImageFlipped
+                    result, end - start,
+                    ImageMetadata(image.width, image.height, isImageFlipped, rotationDegrees)
                 )
             )
         }
@@ -63,10 +61,33 @@ internal class ImageAnalyzer(
 }
 
 data class AnalysisResult(
-    val prediction: Any,
-    val confidence: Float,
+    val prediction: Prediction,
     val processTimeMs: Long,
+    val metadata: ImageMetadata
+)
+
+interface Prediction {
+    val shapes: List<FlatShape<*>>
+    val confidence: Float
+    fun getText(context: Context): String
+}
+
+data class ImageMetadata(
     val width: Int,
     val height: Int,
     val isImageFlipped: Boolean
-)
+) {
+
+    constructor(width: Int, height: Int, isImageFlipped: Boolean, rotationDegrees: Int)
+            : this(
+        if (areDimensionSwitched(rotationDegrees)) height else width,
+        if (areDimensionSwitched(rotationDegrees)) width else height,
+        isImageFlipped
+    )
+
+    companion object {
+        private fun areDimensionSwitched(rotationDegrees: Int): Boolean {
+            return rotationDegrees == 90 || rotationDegrees == 270
+        }
+    }
+}

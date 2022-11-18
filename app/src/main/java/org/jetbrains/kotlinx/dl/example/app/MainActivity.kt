@@ -17,7 +17,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.android.synthetic.main.activity_main.*
-import org.jetbrains.kotlinx.dl.api.inference.objectdetection.DetectedObject
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -125,19 +124,14 @@ class MainActivity : AppCompatActivity() {
     private fun updateUI(result: AnalysisResult?) {
         runOnUiThread {
             clearUi()
-            if (result == null || result.confidence < 0.5f) {
+            if (result == null || result.prediction.confidence < 0.5f) {
                 detector_view.setDetection(null)
                 return@runOnUiThread
             }
             detector_view.setDetection(result)
-            percentMeter.progress = (result.confidence * 100).toInt()
-            val (item, value) = when (val prediction = result.prediction) {
-                is String -> prediction to "%.2f%%".format(result.confidence * 100)
-                is DetectedObject -> prediction.label to "%.2f%%".format(result.confidence * 100)
-                else -> "" to ""
-            }
-            detected_item_1.text = item
-            detected_item_value_1.text = value
+            percentMeter.progress = (result.prediction.confidence * 100).toInt()
+            detected_item_1.text = result.prediction.getText(this)
+            detected_item_value_1.text = "%.2f%%".format(result.prediction.confidence * 100)
             inference_time_value.text = getString(R.string.inference_time_placeholder, result.processTimeMs)
         }
     }

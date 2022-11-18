@@ -1,5 +1,6 @@
 package org.jetbrains.kotlinx.dl.example.app
 
+import android.content.Context
 import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Rect
@@ -33,7 +34,7 @@ import org.jetbrains.kotlinx.dl.onnx.inference.posedetection.detectPose
 
 
 interface InferencePipeline {
-    fun analyze(image: ImageProxy): Pair<Any, Float>?
+    fun analyze(image: ImageProxy): Prediction?
     fun close()
 }
 
@@ -91,33 +92,45 @@ enum class Pipelines(val task: Tasks, val descriptionId: Int) {
 }
 
 internal class DetectionPipeline(private val model: SSDLikeModel) : InferencePipeline {
-    override fun analyze(image: ImageProxy): Pair<DetectedObject, Float>? {
+    override fun analyze(image: ImageProxy): Prediction? {
         val detections = model.inferUsing(CPU()) {
             it.detectObjects(image, 1)
         }
         if (detections.isEmpty()) return null
 
-        val detection = detections.single()
-        return detection to detection.probability
+        return PredictedObject(detections.single())
     }
 
     override fun close() {
         model.close()
     }
+
+    class PredictedObject(private val detection: DetectedObject) : Prediction {
+        override val shapes: List<FlatShape<*>> get() = listOf(detection)
+        override val confidence: Float get() = detection.probability
+        override fun getText(context: Context): String = detection.label ?: ""
+    }
 }
 
-internal class ClassificationPipeline(private val model: ImageRecognitionModel) : InferencePipeline {
+internal class ClassificationPipeline(private val model: ImageRecognitionModel) :
+    InferencePipeline {
 
-    override fun analyze(image: ImageProxy): Pair<String, Float>? {
+    override fun analyze(image: ImageProxy): Prediction? {
         val predictions = model.inferUsing(NNAPI()) {
             it.predictTopKObjects(image, 1)
         }
         if (predictions.isEmpty()) return null
-        return predictions.single()
+        val (label, confidence) = predictions.single()
+        return PredictedClass(label, confidence)
     }
 
     override fun close() {
         model.close()
+    }
+
+    class PredictedClass(private val label: String, override val confidence: Float) : Prediction {
+        override val shapes: List<FlatShape<*>> get() = emptyList()
+        override fun getText(context: Context): String = label
     }
 }
 
@@ -126,7 +139,7 @@ internal class ShufflenetPipeline(
 ) : InferencePipeline {
     private val labels = Imagenet.V1k.labels()
 
-    override fun analyze(image: ImageProxy): Pair<String, Float> {
+    override fun analyze(image: ImageProxy): Prediction {
         val bitmap = image.toBitmap()
         val rotation = image.imageInfo.rotationDegrees.toFloat()
 
@@ -147,7 +160,7 @@ internal class ShufflenetPipeline(
             labels[labelId]!! to confidence[labelId]
         }
 
-        return label to confidence
+        return ClassificationPipeline.PredictedClass(label, confidence)
     }
 
     override fun close() {
@@ -156,24 +169,30 @@ internal class ShufflenetPipeline(
 }
 
 class PoseDetectionPipeline(private val model: SinglePoseDetectionModel) : InferencePipeline {
-    override fun analyze(image: ImageProxy): Pair<DetectedPose, Float>? {
+    override fun analyze(image: ImageProxy): Prediction? {
         val detectedPose = model.inferUsing(CPU()) {
             it.detectPose(image)
         }
 
         if (detectedPose.landmarks.isEmpty()) return null
 
-        return detectedPose to detectedPose.landmarks.maxOf { it.probability }
+        return PredictedPose(detectedPose)
     }
 
     override fun close() = model.close()
+
+    class PredictedPose(private val pose: DetectedPose) : Prediction {
+        override val shapes: List<FlatShape<*>> get() = listOf(pose)
+        override val confidence: Float get() = pose.landmarks.maxOf { it.probability }
+        override fun getText(context: Context): String = context.getString(R.string.label_pose)
+    }
 }
 
 class FaceAlignmentPipeline(
     private val detectionModel: FaceDetectionModel,
     private val alignmentModel: Fan2D106FaceAlignmentModel
 ) : InferencePipeline {
-    override fun analyze(image: ImageProxy): Pair<FaceAlignmentResult, Float>? {
+    override fun analyze(image: ImageProxy): Prediction? {
         val bitmap = image.toBitmap(applyRotation = true)
 
         val detectedObjects = detectionModel.detectFaces(bitmap, 1)
@@ -190,16 +209,20 @@ class FaceAlignmentPipeline(
         )
 
         val landmarks = alignmentModel.predictOnCrop(bitmap, faceRect)
-        return FaceAlignmentResult(face, landmarks) to 1f
+        return FaceAlignmentPrediction(face, landmarks)
     }
 
     override fun close() {
         detectionModel.close()
         alignmentModel.close()
     }
-}
 
-data class FaceAlignmentResult(val face: DetectedObject, val landmarks: List<Landmark>)
+    data class FaceAlignmentPrediction(val face: DetectedObject, val landmarks: List<Landmark>): Prediction {
+        override val shapes: List<FlatShape<*>> get() = landmarks + face
+        override val confidence: Float get() = face.probability
+        override fun getText(context: Context): String = context.getString(R.string.label_face)
+    }
+}
 
 private fun <I> Operation<I, Bitmap>.cropRect(rect: Rect): Operation<I, Bitmap> {
     return crop {
