@@ -124,14 +124,20 @@ class MainActivity : AppCompatActivity() {
     private fun updateUI(result: AnalysisResult?) {
         runOnUiThread {
             clearUi()
-            if (result == null || result.prediction.confidence < 0.5f) {
+            if (result == null) {
                 detector_view.setDetection(null)
                 return@runOnUiThread
             }
-            detector_view.setDetection(result)
-            percentMeter.progress = (result.prediction.confidence * 100).toInt()
-            detected_item_1.text = result.prediction.getText(this)
-            detected_item_value_1.text = "%.2f%%".format(result.prediction.confidence * 100)
+
+            if (result is AnalysisResult.WithPrediction && result.prediction.confidence >= 0.5f) {
+                detector_view.setDetection(result)
+                detected_item_1.text = result.prediction.getText(this)
+                val confidencePercent = result.prediction.confidence * 100
+                percentMeter.progress = confidencePercent.toInt()
+                detected_item_value_1.text = "%.2f%%".format(confidencePercent)
+            } else {
+                detector_view.setDetection(null)
+            }
             inference_time_value.text = getString(R.string.inference_time_placeholder, result.processTimeMs)
         }
     }

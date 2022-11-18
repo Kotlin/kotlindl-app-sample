@@ -27,18 +27,24 @@ internal class ImageAnalyzer(
     private val currentPipeline: InferencePipeline? get() = pipelines.getOrNull(currentPipelineIndex)
 
     fun analyze(image: ImageProxy, isImageFlipped: Boolean) {
+        val pipeline = currentPipeline
+        if (pipeline == null) {
+            uiUpdateCallBack(null)
+            return
+        }
+
         val start = SystemClock.uptimeMillis()
-        val result = currentPipeline?.analyze(image)
+        val result = pipeline.analyze(image)
         val end = SystemClock.uptimeMillis()
 
         val rotationDegrees = image.imageInfo.rotationDegrees
         image.close()
 
         if (result == null) {
-            uiUpdateCallBack(null)
+            uiUpdateCallBack(AnalysisResult.Empty(end - start))
         } else {
             uiUpdateCallBack(
-                AnalysisResult(
+                AnalysisResult.WithPrediction(
                     result, end - start,
                     ImageMetadata(image.width, image.height, isImageFlipped, rotationDegrees)
                 )
@@ -60,11 +66,14 @@ internal class ImageAnalyzer(
     }
 }
 
-data class AnalysisResult(
-    val prediction: Prediction,
-    val processTimeMs: Long,
-    val metadata: ImageMetadata
-)
+sealed class AnalysisResult(val processTimeMs: Long) {
+    class Empty(processTimeMs: Long) : AnalysisResult(processTimeMs)
+    class WithPrediction(
+        val prediction: Prediction,
+        processTimeMs: Long,
+        val metadata: ImageMetadata
+    ) : AnalysisResult(processTimeMs)
+}
 
 interface Prediction {
     val shapes: List<FlatShape<*>>
