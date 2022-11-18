@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'kotlin-android-extensions'
-    id 'org.jetbrains.kotlinx.kotlin-deeplearning-gradle-plugin' version '0.5.0-alpha-1'
+    id 'org.jetbrains.kotlinx.kotlin-deeplearning-gradle-plugin' version '0.5.0-alpha-2'
 }
 
 android {
@@ -40,9 +40,11 @@ android {
     ndkVersion ndkVersion
 }
 
+def camerax_version = "1.1.0"
+def kotlindl_version = "0.5.0-alpha-2"
+
 dependencies {
     // CameraX core library using the camera2 implementation
-    def camerax_version = "1.1.0"
     // The following line is optional, as the core library is included indirectly by camera-camera2
     implementation "androidx.camera:camera-camera2:${camerax_version}"
     // If you want to additionally use the CameraX Lifecycle library
@@ -50,8 +52,8 @@ dependencies {
     // If you want to additionally use the CameraX View class
     implementation "androidx.camera:camera-view:1.1.0"
 
-    implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-visualization:0.5.0-alpha-1'
-    implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-onnx:0.5.0-alpha-1'
+    implementation "org.jetbrains.kotlinx:kotlin-deeplearning-visualization:$kotlindl_version"
+    implementation "org.jetbrains.kotlinx:kotlin-deeplearning-onnx:$kotlindl_version"
     implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'androidx.appcompat:appcompat:1.5.1'
     implementation 'com.google.android.material:material:1.6.1'
