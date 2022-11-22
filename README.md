@@ -1,4 +1,6 @@
-##  KotlinDL Android inference examples
+##  KotlinDL Android inference demo application [![official JetBrains project](http://jb.gg/badges/incubator.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
+
+[![Slack channel](https://img.shields.io/badge/chat-slack-green.svg?logo=slack)](https://kotlinlang.slack.com/messages/kotlindl/)
 
 ||||
 | ---------- | ----------- | ----------- |
@@ -12,7 +14,8 @@ The list of demonstrated models includes:
 * MobileNetV1 and EfficientNetV4Lite for image classification
 * SSDMobileNetV1 and EfficientDetLite0 for object detection
 * MoveNet for human pose estimation
-* Face detection and alignment
+* UltraFace320 for Face detection
+* Fan2d106Face for Face alignment
 
 This application is based on CameraX Android API and uses the latest KotlinDL version.
 The actual model inference is performed by the [Onnx Runtime](https://github.com/microsoft/onnxruntime).
