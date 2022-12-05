@@ -53,12 +53,12 @@ enum class Pipelines(val task: Tasks, val descriptionId: Int) {
     },
     EfficientNetLite4(Tasks.Classification, R.string.pipeline_efficient_net_lite_4) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
-            return ClassificationPipeline(ONNXModels.CV.EfficientNet4Lite().pretrainedModel(hub))
+            return ClassificationPipeline(ONNXModels.CV.EfficientNet4Lite.pretrainedModel(hub))
         }
     },
     MobilenetV1(Tasks.Classification, R.string.pipeline_mobilenet_v1) {
         override fun createPipeline(hub: ONNXModelHub, resources: Resources): InferencePipeline {
-            return ClassificationPipeline(ONNXModels.CV.MobilenetV1().pretrainedModel(hub))
+            return ClassificationPipeline(ONNXModels.CV.MobilenetV1.pretrainedModel(hub))
         }
     },
     Shufflenet(Tasks.Classification, R.string.pipeline_shufflenet) {

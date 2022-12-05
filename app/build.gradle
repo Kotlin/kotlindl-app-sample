@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'kotlin-android-extensions'
-    id 'org.jetbrains.kotlinx.kotlin-deeplearning-gradle-plugin' version '0.5.0-alpha-3'
+    id 'org.jetbrains.kotlinx.kotlin-deeplearning-gradle-plugin' version '0.5.0'
 }
 
 android {
@@ -41,7 +41,7 @@ android {
 }
 
 def camerax_version = "1.1.0"
-def kotlindl_version = "0.5.0-alpha-2"
+def kotlindl_version = "0.5.0"
 
 dependencies {
     // CameraX core library using the camera2 implementation
