@@ -1,13 +1,11 @@
 package org.jetbrains.kotlinx.dl.example.app
 
 import android.content.Context
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import kotlinx.android.synthetic.main.pipelines_selector.view.text1
-import kotlinx.android.synthetic.main.pipelines_selector.view.text2
+import android.widget.TextView
 
 class PipelineSelectorAdapter(context: Context, private val resource: Int, items: List<Pipelines>) :
     ArrayAdapter<Pipelines>(context, resource, items) {
@@ -27,8 +25,8 @@ class PipelineSelectorAdapter(context: Context, private val resource: Int, items
         )
 
         val pipeline = getItem(position)
-        view.text1.text = pipeline?.descriptionId?.let { context.getString(it) } ?: ""
-        view.text2.text = pipeline?.task?.descriptionId?.let { context.getString(it) } ?: ""
+        view.findViewById<TextView>(R.id.text1).text = pipeline?.descriptionId?.let { context.getString(it) } ?: ""
+        view.findViewById<TextView>(R.id.text2).text = pipeline?.task?.descriptionId?.let { context.getString(it) } ?: ""
 
         return view
     }
