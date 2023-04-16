@@ -1,11 +1,12 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
-    id 'kotlin-android-extensions'
     id 'org.jetbrains.kotlinx.kotlin-deeplearning-gradle-plugin' version '0.5.1'
+    id 'org.jetbrains.kotlin.android'
 }
 
 android {
+    namespace 'org.jetbrains.kotlinx.dl.example.app'
     compileSdkVersion 33
     buildToolsVersion "30.0.3"
 
@@ -40,7 +41,7 @@ android {
     ndkVersion ndkVersion
 }
 
-def camerax_version = "1.1.0"
+def camerax_version = "1.2.2"
 def kotlindl_version = "0.5.1"
 
 dependencies {
@@ -50,13 +51,13 @@ dependencies {
     // If you want to additionally use the CameraX Lifecycle library
     implementation "androidx.camera:camera-lifecycle:${camerax_version}"
     // If you want to additionally use the CameraX View class
-    implementation "androidx.camera:camera-view:1.1.0"
+    implementation "androidx.camera:camera-view:1.2.2"
 
     implementation "org.jetbrains.kotlinx:kotlin-deeplearning-visualization:$kotlindl_version"
     implementation "org.jetbrains.kotlinx:kotlin-deeplearning-onnx:$kotlindl_version"
-    implementation 'androidx.core:core-ktx:1.9.0'
-    implementation 'androidx.appcompat:appcompat:1.5.1'
-    implementation 'com.google.android.material:material:1.6.1'
+    implementation 'androidx.core:core-ktx:1.10.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.8.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'io.github.microutils:kotlin-logging-jvm:2.1.21'
 }

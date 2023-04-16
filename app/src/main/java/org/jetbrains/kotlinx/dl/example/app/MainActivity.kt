@@ -16,7 +16,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import kotlinx.android.synthetic.main.activity_main.*
+import org.jetbrains.kotlinx.dl.example.app.databinding.ActivityMainBinding
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -25,6 +25,7 @@ import java.util.concurrent.TimeoutException
 
 class MainActivity : AppCompatActivity() {
     private val backgroundExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
+    private lateinit var binding: ActivityMainBinding
 
     @Volatile
     private lateinit var cameraProcessor: CameraProcessor
@@ -33,7 +34,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        val view = binding.root
+        setContentView(view)
 
         savedInstanceState?.apply {
             currentPipeline = getInt(CURRENT_PIPELINE, 0)
@@ -48,7 +51,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        detector_view.scaleType = viewFinder.scaleType
+        binding.detectorView.scaleType = binding.viewFinder.scaleType
     }
 
     private fun startCamera(currentPipelineIndex: Int, isBackCamera: Boolean) {
@@ -62,7 +65,7 @@ class MainActivity : AppCompatActivity() {
                 cameraProcessor = CameraProcessor(
                     imageAnalyzer,
                     cameraProviderFuture.get(),
-                    viewFinder.surfaceProvider,
+                    binding.viewFinder.surfaceProvider,
                     backgroundExecutor,
                     isBackCamera
                 )
@@ -75,12 +78,12 @@ class MainActivity : AppCompatActivity() {
                     R.layout.pipelines_selector,
                     imageAnalyzer.pipelinesList
                 )
-                models.adapter = modelsSpinnerAdapter
-                models.onItemSelectedListener = ModelItemSelectedListener()
-                models.setSelection(imageAnalyzer.currentPipelineIndex, false)
+                binding.models.adapter = modelsSpinnerAdapter
+                binding.models.onItemSelectedListener = ModelItemSelectedListener()
+                binding.models.setSelection(imageAnalyzer.currentPipelineIndex, false)
 
-                backCameraSwitch.isChecked = cameraProcessor.isBackCamera
-                backCameraSwitch.setOnCheckedChangeListener { _, isChecked ->
+                binding.backCameraSwitch.isChecked = cameraProcessor.isBackCamera
+                binding.backCameraSwitch.setOnCheckedChangeListener { _, isChecked ->
                     if (!cameraProcessor.setBackCamera(isChecked, this)) {
                         showError("Could not switch to the lens facing ${if (cameraProcessor.isBackCamera) "back" else "front"}.")
                     }
@@ -125,28 +128,28 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread {
             clearUi()
             if (result == null) {
-                detector_view.setDetection(null)
+                binding.detectorView.setDetection(null)
                 return@runOnUiThread
             }
 
             if (result is AnalysisResult.WithPrediction) {
-                detector_view.setDetection(result)
-                detected_item_text.text = result.prediction.getText(this)
+                binding.detectorView.setDetection(result)
+                binding.detectedItemText.text = result.prediction.getText(this)
                 val confidencePercent = result.prediction.confidence * 100
-                percentMeter.progress = confidencePercent.toInt()
-                detected_item_confidence.text = "%.2f%%".format(confidencePercent)
+                binding.percentMeter.progress = confidencePercent.toInt()
+                binding.detectedItemConfidence.text = "%.2f%%".format(confidencePercent)
             } else {
-                detector_view.setDetection(null)
+                binding.detectorView.setDetection(null)
             }
-            inference_time_value.text = getString(R.string.inference_time_placeholder, result.processTimeMs)
+            binding.inferenceTimeValue.text = getString(R.string.inference_time_placeholder, result.processTimeMs)
         }
     }
 
     private fun clearUi() {
-        detected_item_text.text = ""
-        detected_item_confidence.text = ""
-        inference_time_value.text = ""
-        percentMeter.progress = 0
+        binding.detectedItemText.text = ""
+        binding.detectedItemConfidence.text = ""
+        binding.inferenceTimeValue.text = ""
+        binding.percentMeter.progress = 0
     }
 
     override fun onDestroy() {
